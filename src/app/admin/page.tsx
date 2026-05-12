@@ -3,12 +3,11 @@
 import { useEffect, useState, useMemo } from "react";
 import { auth, db } from "@/lib/firebase";
 import { onAuthStateChanged, signOut } from "firebase/auth";
-import { collection, query, orderBy, onSnapshot, where } from "firebase/firestore";
+import { collection, query, orderBy, onSnapshot, where, doc, deleteDoc } from "firebase/firestore";
 import { useRouter } from "next/navigation";
-import Link from "next/link";
 import EnrollForm from "./EnrollForm"; 
 import { 
-  Menu, X, LayoutDashboard, UserPlus, LogOut, Search, Clock, ArrowLeft, ShieldCheck, Activity, Users, ChevronRight
+  Menu, X, LayoutDashboard, UserPlus, LogOut, Search, Clock, ArrowLeft, ShieldCheck, Activity, Users, ChevronRight, Trash2
 } from "lucide-react";
 
 export default function AdminPage() {
@@ -50,7 +49,12 @@ export default function AdminPage() {
     return () => { unsubStaff(); unsubAttend(); };
   }, [fromDate, toDate]);
 
-  // Shared Logic for processing time and status
+  const handleDeleteStaff = async (id: string) => {
+    if(confirm("Permanently remove this innovator from the registry?")) {
+      await deleteDoc(doc(db, "staff", id));
+    }
+  };
+
   const processSessions = (name: string) => {
     const personLogs = attendanceLogs
       .filter(l => l.name === name)
@@ -107,131 +111,121 @@ export default function AdminPage() {
     return [...sessions].reverse();
   }, [selectedStaff, attendanceLogs]);
 
-  if (loading) return <div className="min-h-screen bg-white flex items-center justify-center font-mono text-[10px] uppercase tracking-widest animate-pulse">Establishing_Secure_Link...</div>;
+  if (loading) return <div className="min-h-screen bg-white flex items-center justify-center font-mono text-[10px] uppercase tracking-widest animate-pulse">Establishing_Link...</div>;
 
   return (
     <div className="min-h-screen bg-[#F8F9FB] text-slate-900 font-mono flex flex-col lg:flex-row">
       
-      {/* SIDEBAR NAVIGATION */}
-      <aside className={`fixed inset-y-0 left-0 z-50 w-72 bg-white border-r border-slate-100 transition-transform lg:relative lg:translate-x-0 ${isMenuOpen ? "translate-x-0" : "-translate-x-full"}`}>
-        <div className="p-8 flex flex-col h-full">
-          <div className="mb-12 flex items-center gap-3">
-            <div className="w-10 h-10 bg-slate-900 rounded-xl flex items-center justify-center text-white">
-              <ShieldCheck size={20} />
-            </div>
-            <div>
-              <h1 className="font-black text-[12px] uppercase tracking-tighter">Diamond_Fort</h1>
-              <p className="text-[7px] text-slate-400 font-bold uppercase tracking-widest">Admin_Control</p>
-            </div>
+      {/* SIDEBAR */}
+      <aside className={`fixed inset-y-0 left-0 z-50 w-64 bg-white border-r transition-transform lg:relative lg:translate-x-0 ${isMenuOpen ? "translate-x-0 shadow-2xl" : "-translate-x-full"}`}>
+        <div className="p-6 flex flex-col h-full">
+          <div className="mb-10 flex items-center gap-3">
+            <div className="w-8 h-8 bg-black rounded-lg flex items-center justify-center text-white"><ShieldCheck size={18} /></div>
+            <h1 className="font-black text-xs uppercase tracking-tighter">Diamond_Fort</h1>
           </div>
           
-          <nav className="space-y-1.5 flex-1">
-            <button onClick={() => {setActiveTab("dashboard"); setIsMenuOpen(false)}} className={`w-full flex items-center gap-4 px-5 py-4 rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all ${activeTab === "dashboard" ? "bg-slate-900 text-white shadow-lg shadow-slate-200" : "text-slate-400 hover:bg-slate-50"}`}>
-              <LayoutDashboard size={16}/> Dashboard
-            </button>
-            <button onClick={() => {setActiveTab("attendance"); setSelectedStaff(null); setIsMenuOpen(false)}} className={`w-full flex items-center gap-4 px-5 py-4 rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all ${activeTab === "attendance" ? "bg-slate-900 text-white shadow-lg shadow-slate-200" : "text-slate-400 hover:bg-slate-50"}`}>
-              <Clock size={16}/> Attendance
-            </button>
-            <button onClick={() => {setActiveTab("enroll"); setIsMenuOpen(false)}} className={`w-full flex items-center gap-4 px-5 py-4 rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all ${activeTab === "enroll" ? "bg-slate-900 text-white shadow-lg shadow-slate-200" : "text-slate-400 hover:bg-slate-50"}`}>
-              <UserPlus size={16}/> Enrollment
-            </button>
+          <nav className="space-y-1 flex-1">
+            {[
+              { id: 'dashboard', icon: LayoutDashboard, label: 'Overview' },
+              { id: 'attendance', icon: Clock, label: 'Register' },
+              { id: 'enroll', icon: UserPlus, label: 'Personnel' }
+            ].map((item) => (
+              <button key={item.id} onClick={() => {setActiveTab(item.id as any); setSelectedStaff(null); setIsMenuOpen(false)}} 
+                className={`w-full flex items-center gap-3 px-4 py-3.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${activeTab === item.id ? "bg-black text-white" : "text-slate-400 hover:bg-slate-50"}`}>
+                <item.icon size={16}/> {item.label}
+              </button>
+            ))}
           </nav>
 
-          <button onClick={() => signOut(auth)} className="mt-8 px-5 py-4 text-red-500 text-[10px] font-black uppercase border border-red-50 rounded-2xl bg-red-50/50 flex items-center gap-4 hover:bg-red-500 hover:text-white transition-all group">
-            <LogOut size={16} className="group-hover:rotate-180 transition-transform duration-500"/> Logout
+          <button onClick={() => signOut(auth)} className="mt-4 px-4 py-3 text-red-500 text-[10px] font-black uppercase rounded-xl bg-red-50 flex items-center gap-3 hover:bg-red-500 hover:text-white transition-all">
+            <LogOut size={16}/> Logout
           </button>
         </div>
       </aside>
 
-      {/* MOBILE HEADER */}
-      <div className="lg:hidden h-16 bg-white border-b px-6 flex items-center justify-between sticky top-0 z-40">
-        <span className="font-black text-[10px] uppercase tracking-widest">Mission_Control</span>
-        <button onClick={() => setIsMenuOpen(!isMenuOpen)} className="p-2 bg-slate-50 rounded-lg">
-          {isMenuOpen ? <X size={20}/> : <Menu size={20}/>}
+      {/* MOBILE NAV TOGGLE */}
+      <div className="lg:hidden h-14 bg-white border-b px-5 flex items-center justify-between sticky top-0 z-40">
+        <span className="font-black text-[9px] uppercase tracking-widest">Mission_Control</span>
+        <button onClick={() => setIsMenuOpen(!isMenuOpen)} className="p-1.5 bg-slate-100 rounded-lg">
+          {isMenuOpen ? <X size={18}/> : <Menu size={18}/>}
         </button>
       </div>
 
-      <main className="flex-1 p-6 lg:p-16 overflow-y-auto">
-        <div className="max-w-6xl mx-auto">
+      <main className="flex-1 p-5 lg:p-12 overflow-y-auto">
+        <div className="max-w-5xl mx-auto">
           
-          {/* DASHBOARD TAB (DEFAULT) */}
+          {/* DASHBOARD */}
           {activeTab === "dashboard" && (
-            <div className="space-y-12 animate-in fade-in slide-in-from-bottom-4 duration-700">
+            <div className="space-y-6 animate-in fade-in duration-500">
               <header>
-                <h2 className="text-5xl font-black uppercase tracking-tighter">Strategic_Overview</h2>
-                <p className="text-[11px] text-slate-400 uppercase font-bold tracking-[0.3em] mt-3">Mission 2K36 // Live Operations</p>
+                <h2 className="text-3xl lg:text-4xl font-black uppercase tracking-tighter">Strategic_Pulse</h2>
+                <p className="text-[9px] text-slate-400 uppercase font-bold tracking-widest mt-1">Live Operational Data</p>
               </header>
 
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-                <div className="bg-white p-10 rounded-[3rem] border border-slate-100 shadow-sm">
-                  <Users className="text-slate-200 mb-6" size={32} />
-                  <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">Total_Innovators</p>
-                  <p className="text-6xl font-black mt-2 text-slate-900">{staffList.length}</p>
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                <div className="bg-white p-8 rounded-[2rem] border shadow-sm flex flex-col justify-between h-40">
+                  <p className="text-[9px] font-black text-slate-400 uppercase">Innovators</p>
+                  <p className="text-5xl font-black">{staffList.length}</p>
                 </div>
-                <div className="bg-white p-10 rounded-[3rem] border border-slate-100 shadow-sm">
-                  <Activity className="text-emerald-400 mb-6" size={32} />
-                  <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">Currently_On_Duty</p>
-                  <p className="text-6xl font-black mt-2 text-emerald-500">{masterSummary.filter(s => s.status === 'ON DUTY').length}</p>
+                <div className="bg-white p-8 rounded-[2rem] border shadow-sm flex flex-col justify-between h-40">
+                  <p className="text-[9px] font-black text-slate-400 uppercase">On Duty</p>
+                  <p className="text-5xl font-black text-emerald-500">{masterSummary.filter(s => s.status === 'ON DUTY').length}</p>
                 </div>
-                <div className="bg-slate-900 p-10 rounded-[3rem] text-white flex flex-col justify-between group cursor-pointer" onClick={() => setActiveTab("attendance")}>
-                   <Clock className="text-emerald-400 group-hover:rotate-12 transition-transform" size={32} />
-                   <div>
-                    <p className="text-[11px] font-black uppercase tracking-widest">Go to Register</p>
-                    <ChevronRight className="mt-2 group-hover:translate-x-2 transition-transform" />
-                   </div>
-                </div>
+                <button onClick={() => setActiveTab("attendance")} className="bg-black p-8 rounded-[2rem] text-white flex flex-col justify-between h-40 hover:scale-[1.02] transition-all group">
+                   <Clock className="text-emerald-400" size={24} />
+                   <p className="text-[10px] font-black uppercase tracking-widest flex items-center gap-2">Register <ChevronRight size={14} className="group-hover:translate-x-1 transition-transform"/></p>
+                </button>
               </div>
             </div>
           )}
 
-          {/* ATTENDANCE TAB */}
+          {/* ATTENDANCE */}
           {activeTab === "attendance" && (
-            <div className="space-y-8 animate-in fade-in duration-500">
-              <header className="flex flex-col md:flex-row md:items-end justify-between gap-6">
-                <div className="flex items-center gap-4">
-                  {selectedStaff && <button onClick={() => setSelectedStaff(null)} className="p-3 bg-white border shadow-sm rounded-2xl hover:bg-slate-50"><ArrowLeft size={18}/></button>}
-                  <div>
-                    <h2 className="text-4xl font-black uppercase tracking-tighter">{selectedStaff || "Attendance_Register"}</h2>
-                    <p className="text-[10px] text-slate-400 uppercase font-bold tracking-widest mt-1">Audit Mode: {fromDate} → {toDate}</p>
-                  </div>
+            <div className="space-y-6 animate-in fade-in duration-300">
+              <header className="flex flex-col gap-4">
+                <div className="flex items-center gap-3">
+                  {selectedStaff && <button onClick={() => setSelectedStaff(null)} className="p-2 bg-white border rounded-full"><ArrowLeft size={16}/></button>}
+                  <h2 className="text-2xl lg:text-3xl font-black uppercase tracking-tighter">{selectedStaff || "Workforce_Registry"}</h2>
                 </div>
                 {!selectedStaff && (
-                  <div className="flex flex-col sm:flex-row gap-2">
-                    <div className="flex gap-1 bg-white p-1 rounded-2xl border shadow-sm">
-                      <input type="date" max={today} className="px-3 py-2 bg-transparent text-[10px] font-black uppercase" value={fromDate} onChange={(e) => setFromDate(e.target.value)} />
-                      <div className="flex items-center text-slate-300 px-1">—</div>
-                      <input type="date" max={today} className="px-3 py-2 bg-transparent text-[10px] font-black uppercase" value={toDate} onChange={(e) => setToDate(e.target.value)} />
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                    <div className="flex bg-white p-1 rounded-xl border shadow-sm">
+                      <input type="date" max={today} className="flex-1 px-3 py-2 text-[9px] font-black bg-transparent" value={fromDate} onChange={(e) => setFromDate(e.target.value)} />
+                      <input type="date" max={today} className="flex-1 px-3 py-2 text-[9px] font-black bg-transparent border-l" value={toDate} onChange={(e) => setToDate(e.target.value)} />
                     </div>
                     <div className="relative">
                       <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-300" size={14} />
-                      <input type="text" placeholder="SEARCH PERSONNEL..." className="pl-10 pr-6 py-3 bg-white border border-slate-100 shadow-sm rounded-2xl text-[10px] font-black" value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} />
+                      <input type="text" placeholder="FILTER NAME..." className="w-full pl-10 pr-4 py-3 bg-white border shadow-sm rounded-xl text-[9px] font-black" value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} />
                     </div>
                   </div>
                 )}
               </header>
 
-              <div className="space-y-4">
-                <div className="hidden lg:grid grid-cols-6 px-12 py-2 text-[8px] font-black text-slate-400 uppercase tracking-[0.3em]">
-                  <div>Date</div><div>Innovator</div><div>In_Time</div><div>Out_Time</div><div>{selectedStaff ? "Duration" : "Total_Hours"}</div><div className="text-right">Status</div>
-                </div>
-
+              <div className="grid grid-cols-1 gap-3">
                 {(selectedStaff ? detailedView : masterSummary).map((row, idx) => (
-                  <div key={idx} onClick={() => !selectedStaff && row.status !== "ABSENT" && setSelectedStaff(row.name)} className={`bg-white border border-slate-50 rounded-[2.5rem] p-6 lg:px-12 lg:py-6 shadow-sm transition-all ${!selectedStaff && row.status !== "ABSENT" ? "cursor-pointer hover:border-slate-300 hover:shadow-md" : ""}`}>
-                    <div className="grid grid-cols-2 lg:grid-cols-6 items-center gap-y-6 lg:gap-4">
-                      <div className="text-[11px] font-black text-slate-900">{row.date}</div>
-                      <div className="text-[13px] font-black text-slate-900 uppercase tracking-tighter">{row.name}</div>
-                      <div className="text-[12px] font-mono font-bold text-slate-600">{row.inTime}</div>
-                      <div className="text-[12px] font-mono font-black text-slate-600">
-                        {row.outTime === "--:--" ? (row.status === 'ON DUTY' ? <span className="text-emerald-500 animate-pulse">ACTIVE</span> : "--:--") : row.outTime}
+                  <div key={idx} onClick={() => !selectedStaff && row.status !== "ABSENT" && setSelectedStaff(row.name)} 
+                    className={`bg-white border rounded-[1.5rem] p-5 shadow-sm transition-all ${!selectedStaff && row.status !== "ABSENT" ? "cursor-pointer active:scale-95" : ""}`}>
+                    <div className="flex flex-wrap justify-between items-start gap-4">
+                      <div>
+                        <p className="text-[10px] font-black text-slate-900 uppercase tracking-tighter mb-1">{row.name}</p>
+                        <p className="text-[8px] font-bold text-slate-400">{row.date}</p>
                       </div>
-                      <div className="text-[11px] font-mono font-black text-emerald-600">{row.workTime}</div>
-                      <div className="text-right">
-                        <span className={`px-5 py-2 rounded-full text-[8px] font-black uppercase tracking-widest border ${
-                          row.status === 'ON DUTY' ? 'bg-amber-50 text-amber-600 border-amber-100' : 
-                          row.status === 'OUT' ? 'bg-blue-50 text-blue-600 border-blue-100' : 'bg-slate-50 text-slate-400 border-slate-100'
-                        }`}>
-                          {row.status}
-                        </span>
+                      <div className={`px-3 py-1 rounded-full text-[7px] font-black uppercase border ${row.status === 'ON DUTY' ? 'bg-amber-50 text-amber-600 border-amber-100' : 'bg-slate-50 text-slate-400'}`}>
+                        {row.status}
+                      </div>
+                    </div>
+                    <div className="grid grid-cols-3 mt-5 border-t pt-4">
+                      <div className="text-center border-r">
+                        <p className="text-[7px] font-bold text-slate-400 uppercase mb-1">In</p>
+                        <p className="text-[10px] font-mono font-bold">{row.inTime}</p>
+                      </div>
+                      <div className="text-center border-r">
+                        <p className="text-[7px] font-bold text-slate-400 uppercase mb-1">Out</p>
+                        <p className="text-[10px] font-mono font-bold">{row.outTime === "--:--" && row.status === 'ON DUTY' ? 'ACTIVE' : row.outTime}</p>
+                      </div>
+                      <div className="text-center">
+                        <p className="text-[7px] font-bold text-slate-400 uppercase mb-1">{selectedStaff ? "Work" : "Total"}</p>
+                        <p className="text-[10px] font-mono font-black text-emerald-600">{row.workTime}</p>
                       </div>
                     </div>
                   </div>
@@ -240,12 +234,32 @@ export default function AdminPage() {
             </div>
           )}
 
-          {/* ENROLLMENT TAB */}
+          {/* ENROLLMENT & LIST */}
           {activeTab === "enroll" && (
-            <div className="max-w-2xl mx-auto animate-in fade-in slide-in-from-top-4 duration-500">
-              <EnrollForm />
+            <div className="space-y-10 animate-in slide-in-from-top-4 duration-500">
+              <div className="max-w-xl mx-auto"><EnrollForm /></div>
+              
+              <div className="space-y-4">
+                <h3 className="text-xl font-black uppercase tracking-tight flex items-center gap-2">
+                  <Users size={20} /> Registered_Personnel
+                </h3>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  {staffList.map((staff) => (
+                    <div key={staff.id} className="bg-white p-5 rounded-2xl border flex items-center justify-between group">
+                      <div>
+                        <p className="text-[11px] font-black uppercase tracking-tighter">{staff.name}</p>
+                        <p className="text-[8px] text-slate-400 font-bold uppercase">{staff.role || 'Innovator'}</p>
+                      </div>
+                      <button onClick={() => handleDeleteStaff(staff.id)} className="p-2 text-slate-300 hover:text-red-500 transition-colors">
+                        <Trash2 size={16} />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              </div>
             </div>
           )}
+
         </div>
       </main>
     </div>

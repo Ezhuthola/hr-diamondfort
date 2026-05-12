@@ -1,65 +1,48 @@
-import Image from "next/image";
+import Link from 'next/link';
 
-export default function Home() {
+export default function HomePage() {
   return (
-    <div className="flex flex-col flex-1 items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-      <main className="flex flex-1 w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
-        />
-        <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
-          <h1 className="max-w-xs text-3xl font-semibold leading-10 tracking-tight text-black dark:text-zinc-50">
-            To get started, edit the page.tsx file.
-          </h1>
-          <p className="max-w-md text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Learning
-            </a>{" "}
-            center.
-          </p>
+    <main className="flex min-h-screen flex-col items-center justify-center p-6 bg-white">
+      
+      {/* Brand Header */}
+      <div className="mb-14 text-center">
+        <h1 className="text-2xl font-black tracking-tighter sm:text-3xl text-slate-900 border-b-2 border-blue-600 pb-1">
+          HOTEL DIAMOND <span className="text-blue-600">FORT</span>
+        </h1>
+        <p className="mt-2 text-slate-500 font-bold uppercase tracking-[0.1em] text-[10px]">
+          ATTENDANCE MANAGEMENT SYSTEM
+        </p>
+      </div>
+
+      <div className="flex flex-col w-full max-w-sm gap-6">
+        
+        {/* HR Dashboard - Emerald Green */}
+        <Link 
+          href="/admin"
+          className="flex h-28 flex-col items-center justify-center rounded-xl bg-emerald-600 text-white hover:bg-emerald-700 transition-all active:scale-95 shadow-[4px_4px_0px_0px_rgba(6,78,59,1)]"
+        >
+          <span className="text-xl font-bold tracking-tighter">HR DASHBOARD</span>
+          <span className="text-[10px] text-emerald-100 uppercase font-mono mt-1">ACCESS CONTROL</span>
+        </Link>
+
+        {/* Attendance Kiosk - Royal Blue */}
+        <Link 
+          href="/kiosk"
+          className="flex h-28 flex-col items-center justify-center rounded-xl bg-blue-600 text-white hover:bg-blue-700 transition-all active:scale-95 shadow-[4px_4px_0px_0px_rgba(30,58,138,1)]"
+        >
+          <span className="text-xl font-bold tracking-tighter">ATTENDANCE KIOSK</span>
+          <span className="text-[10px] text-blue-100 uppercase font-mono mt-1">BIOMETRIC SCAN</span>
+        </Link>
+
+      </div>
+
+      {/* Footer Info */}
+      <footer className="mt-20">
+        <div className="font-mono text-[10px] text-slate-400 flex items-center gap-2 border border-slate-100 px-4 py-2 rounded-full shadow-sm">
+          <span className="w-2 h-2 bg-emerald-500 rounded-full animate-pulse"></span>
+          SYST_READY // 192.168.1.8
         </div>
-        <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">
-          <a
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc] md:w-[158px]"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={16}
-            />
-            Deploy Now
-          </a>
-          <a
-            className="flex h-12 w-full items-center justify-center rounded-full border border-solid border-black/[.08] px-5 transition-colors hover:border-transparent hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a] md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Documentation
-          </a>
-        </div>
-      </main>
-    </div>
+      </footer>
+    </main>
   );
 }

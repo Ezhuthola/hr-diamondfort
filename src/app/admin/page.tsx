@@ -5,30 +5,25 @@ import { auth, db } from "@/lib/firebase";
 import { onAuthStateChanged, signOut } from "firebase/auth";
 import { collection, query, orderBy, onSnapshot, where } from "firebase/firestore";
 import { useRouter } from "next/navigation";
-import Link from "next/link";
 import EnrollForm from "./EnrollForm"; 
 import { 
-  Menu, 
-  X, 
-  LayoutDashboard, 
-  UserPlus, 
-  LogOut, 
-  Users, 
-  Calendar, 
-  Search, 
-  Clock, 
-  ExternalLink,
-  ShieldCheck
+  Menu, X, LayoutDashboard, UserPlus, LogOut, Calendar, Search, Clock, ArrowLeft, ShieldCheck
 } from "lucide-react";
 
 export default function AdminPage() {
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<"overview" | "enroll" | "attendance">("attendance");
+  const [selectedStaff, setSelectedStaff] = useState<string | null>(null);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [staffList, setStaffList] = useState<any[]>([]);
   const [attendanceLogs, setAttendanceLogs] = useState<any[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
-  const [filterDate, setFilterDate] = useState(new Date().toISOString().split('T')[0]);
+  
+  // Date Range Defaults
+  const today = new Date().toISOString().split('T')[0];
+  const [fromDate, setFromDate] = useState(today);
+  const [toDate, setToDate] = useState(today);
+
   const router = useRouter();
 
   useEffect(() => {
@@ -43,194 +38,179 @@ export default function AdminPage() {
     const unsubStaff = onSnapshot(query(collection(db, "staff"), orderBy("name", "asc")), (snap) => {
       setStaffList(snap.docs.map(doc => ({ id: doc.id, ...doc.data() })));
     });
-    const unsubAttend = onSnapshot(query(collection(db, "attendance"), where("date", "==", filterDate)), (snap) => {
-      setAttendanceLogs(snap.docs.map(doc => ({ id: doc.id, ...doc.data() })));
-    });
-    return () => { unsubStaff(); unsubAttend(); };
-  }, [filterDate]);
 
-  const registerData = useMemo(() => {
+    // Load data within date range
+    const unsubAttend = onSnapshot(
+      query(collection(db, "attendance"), 
+      where("date", ">=", fromDate), 
+      where("date", "<=", toDate)), 
+      (snap) => {
+        setAttendanceLogs(snap.docs.map(doc => ({ id: doc.id, ...doc.data() })));
+      }
+    );
+    return () => { unsubStaff(); unsubAttend(); };
+  }, [fromDate, toDate]);
+
+  // helper to format duration HH:mm
+  const formatDuration = (ms: number) => {
+    const totalMins = Math.floor(ms / 60000);
+    const hrs = Math.floor(totalMins / 60).toString().padStart(2, '0');
+    const mins = (totalMins % 60).toString().padStart(2, '0');
+    return `${hrs}:${mins}`;
+  };
+
+  // Main Registry Logic (Aggregated by Person)
+  const registerSummary = useMemo(() => {
     return staffList.map(staff => {
-      const logs = attendanceLogs
+      const personLogs = attendanceLogs
         .filter(l => l.name === staff.name)
         .sort((a, b) => (a.timestamp?.seconds || 0) - (b.timestamp?.seconds || 0));
-      
-      const entryCount = logs.length;
-      const hasIn = entryCount > 0;
-      const isComplete = entryCount > 0 && entryCount % 2 === 0;
 
+      let totalMs = 0;
       let status = "ABSENT";
-      let inTime = "--:--";
-      let outTime = "--:--";
-      let workTime = "";
+      let lastIn = "--:--";
+      let lastOut = "--:--";
 
-      if (hasIn) {
-        const inLog = logs[0];
-        inTime = inLog.timestamp?.toDate().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false });
+      // Process in pairs for multiple sessions per day
+      for (let i = 0; i < personLogs.length; i += 2) {
+        const inLog = personLogs[i];
+        const outLog = personLogs[i + 1];
         
-        if (isComplete) {
-          const outLog = logs[entryCount - 1];
-          outTime = outLog.timestamp?.toDate().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false });
-          status = "OUT";
-
-          // Calculate Duration HH:mm
-          const diffMs = (outLog.timestamp?.toDate().getTime() || 0) - (inLog.timestamp?.toDate().getTime() || 0);
-          const totalMins = Math.floor(diffMs / 60000);
-          const hrs = Math.floor(totalMins / 60).toString().padStart(2, '0');
-          const mins = (totalMins % 60).toString().padStart(2, '0');
-          workTime = `${hrs}:${mins}`;
-        } else {
+        if (inLog) {
+          lastIn = inLog.timestamp?.toDate().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false });
           status = "WORKING";
+        }
+        if (outLog) {
+          lastOut = outLog.timestamp?.toDate().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false });
+          totalMs += (outLog.timestamp?.toDate().getTime() - inLog.timestamp?.toDate().getTime());
+          status = "OUT";
         }
       }
 
-      return { name: staff.name, inTime, outTime, workTime, status };
+      return { 
+        name: staff.name, 
+        totalHours: formatDuration(totalMs), 
+        status, 
+        lastIn, 
+        lastOut,
+        rawLogs: personLogs // for drill-down
+      };
     }).filter(s => s.name.toLowerCase().includes(searchTerm.toLowerCase()));
   }, [staffList, attendanceLogs, searchTerm]);
 
-  if (loading) return (
-    <div className="min-h-screen bg-white flex flex-col items-center justify-center font-mono">
-      <p className="text-[10px] font-black uppercase tracking-[0.3em] animate-pulse">Syncing_Diamond_Fort...</p>
-    </div>
-  );
+  if (loading) return <div className="min-h-screen bg-white flex items-center justify-center font-mono text-[10px] uppercase tracking-widest">Initialising_Protocol...</div>;
 
   return (
-    <div className="min-h-screen bg-[#F8F9FA] text-slate-900 font-mono flex flex-col lg:flex-row">
+    <div className="min-h-screen bg-[#FBFBFB] text-slate-900 font-mono flex flex-col lg:flex-row">
       
-      {/* Mobile Top Bar */}
-      <div className="lg:hidden h-16 bg-white border-b px-6 flex items-center justify-between sticky top-0 z-50">
-        <div className="flex items-center gap-2">
-          <ShieldCheck size={18} className="text-slate-900" />
-          <span className="font-black text-[11px] tracking-tighter uppercase">Diamond_Fort</span>
-        </div>
-        <button onClick={() => setIsMenuOpen(!isMenuOpen)} className="p-2 bg-slate-50 rounded-lg">
-          {isMenuOpen ? <X size={20}/> : <Menu size={20}/>}
-        </button>
-      </div>
-
-      {/* Sidebar */}
-      <aside className={`fixed inset-y-0 left-0 z-40 w-72 bg-white border-r transition-transform duration-300 lg:relative lg:translate-x-0 ${isMenuOpen ? "translate-x-0" : "-translate-x-full"}`}>
-        <div className="p-8 h-full flex flex-col">
-          <div className="mb-12 hidden lg:block">
+      {/* Sidebar (Existing logic remains) */}
+      <aside className={`fixed inset-y-0 left-0 z-40 w-72 bg-white border-r transition-transform lg:relative lg:translate-x-0 ${isMenuOpen ? "translate-x-0" : "-translate-x-full"}`}>
+        <div className="p-8 flex flex-col h-full">
+           <div className="mb-12 flex items-center gap-2">
+            <ShieldCheck size={20} />
             <h1 className="font-black text-sm uppercase tracking-tight">Diamond_Fort</h1>
-            <p className="text-[8px] text-slate-400 tracking-[0.4em] font-bold">MISSION_2K36_ADMIN</p>
           </div>
-
           <nav className="space-y-2 flex-1">
-            <button onClick={() => {setActiveTab("attendance"); setIsMenuOpen(false)}} className={`w-full flex items-center gap-4 p-4 rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all ${activeTab === "attendance" ? "bg-slate-900 text-white shadow-xl shadow-slate-200" : "text-slate-400 hover:bg-slate-50"}`}>
+            <button onClick={() => {setActiveTab("attendance"); setSelectedStaff(null); setIsMenuOpen(false)}} className={`w-full flex items-center gap-4 p-4 rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all ${activeTab === "attendance" ? "bg-slate-900 text-white" : "text-slate-400"}`}>
               <Clock size={16}/> Register
             </button>
-            <button onClick={() => {setActiveTab("enroll"); setIsMenuOpen(false)}} className={`w-full flex items-center gap-4 p-4 rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all ${activeTab === "enroll" ? "bg-slate-900 text-white shadow-xl shadow-slate-200" : "text-slate-400 hover:bg-slate-50"}`}>
+            <button onClick={() => {setActiveTab("enroll"); setIsMenuOpen(false)}} className={`w-full flex items-center gap-4 p-4 rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all ${activeTab === "enroll" ? "bg-slate-900 text-white" : "text-slate-400"}`}>
               <UserPlus size={16}/> Enrollment
             </button>
-            <button onClick={() => {setActiveTab("overview"); setIsMenuOpen(false)}} className={`w-full flex items-center gap-4 p-4 rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all ${activeTab === "overview" ? "bg-slate-900 text-white shadow-xl shadow-slate-200" : "text-slate-400 hover:bg-slate-50"}`}>
-              <LayoutDashboard size={16}/> Dashboard
-            </button>
           </nav>
-
-          <button onClick={() => signOut(auth)} className="mt-8 p-4 text-red-500 text-[10px] font-black uppercase border border-red-50 rounded-2xl bg-red-50/50 flex items-center gap-2 justify-center">
-            <LogOut size={16}/> Terminate
-          </button>
+          <button onClick={() => signOut(auth)} className="p-4 text-red-500 text-[10px] font-black uppercase border border-red-50 rounded-2xl bg-red-50/50"><LogOut size={16}/></button>
         </div>
       </aside>
 
-      {/* Main Content */}
       <main className="flex-1 p-4 lg:p-12 overflow-y-auto">
         <div className="max-w-6xl mx-auto">
           
           {activeTab === "attendance" && (
-            <div className="space-y-8 animate-in fade-in duration-500">
-              <header className="flex flex-col md:flex-row md:items-end justify-between gap-6">
-                <div>
-                  <h2 className="text-4xl font-black uppercase tracking-tighter">Workforce_Registry</h2>
-                  <p className="text-[10px] text-slate-400 uppercase font-bold tracking-[0.2em] mt-2">Operational Chronology // {filterDate}</p>
-                </div>
-                <div className="flex flex-col sm:flex-row gap-2">
-                  <input 
-                    type="text" 
-                    placeholder="FILTER NAME..." 
-                    className="pl-4 pr-4 py-3 bg-white border border-slate-200 rounded-2xl text-[10px] font-black focus:outline-none"
-                    value={searchTerm}
-                    onChange={(e) => setSearchTerm(e.target.value)}
-                  />
-                  <input 
-                    type="date" 
-                    className="px-4 py-3 bg-white border border-slate-200 rounded-2xl text-[10px] font-black"
-                    value={filterDate}
-                    onChange={(e) => setFilterDate(e.target.value)}
-                  />
-                </div>
-              </header>
-
-              <div className="space-y-4">
-                {/* Desktop Labels */}
-                <div className="hidden lg:grid grid-cols-6 px-10 py-2 text-[9px] font-black text-slate-400 uppercase tracking-widest">
-                  <div className="col-span-2">Innovator</div>
-                  <div>Check_In</div>
-                  <div>Check_Out</div>
-                  <div>Duration</div>
-                  <div className="text-right">Status</div>
-                </div>
-
-                {registerData.map((row) => (
-                  <div key={row.name} className="bg-white border border-slate-100 rounded-[2.5rem] p-6 lg:px-10 lg:py-6 shadow-sm">
-                    <div className="grid grid-cols-2 lg:grid-cols-6 items-center gap-y-6 lg:gap-4">
-                      
-                      <div className="col-span-2 lg:col-span-2">
-                        <p className="text-[15px] font-black text-slate-900 uppercase tracking-tight">{row.name}</p>
-                        <p className="text-[8px] text-slate-400 mt-1 uppercase font-bold tracking-widest lg:hidden">Innovator Identity</p>
-                      </div>
-
-                      <div className="flex flex-col">
-                        <span className="text-[12px] font-mono font-black text-slate-800">{row.inTime}</span>
-                        <span className="text-[8px] text-slate-400 uppercase lg:hidden font-bold mt-1">Check_In</span>
-                      </div>
-
-                      <div className="flex flex-col">
-                        <span className="text-[12px] font-mono font-black text-slate-800">
-                          {row.outTime === "--:--" ? (row.status === 'WORKING' ? <span className="text-slate-300">PENDING</span> : "--:--") : row.outTime}
-                        </span>
-                        <span className="text-[8px] text-slate-400 uppercase lg:hidden font-bold mt-1">Check_Out</span>
-                      </div>
-
-                      {/* Work Duration Column */}
-                      <div className="flex flex-col lg:block">
-                        <span className={`text-[12px] font-mono font-black ${row.workTime ? 'text-emerald-600' : 'text-slate-300'}`}>
-                          {row.workTime || "--:--"}
-                        </span>
-                        <span className="text-[8px] text-slate-400 uppercase lg:hidden font-bold mt-1">Work_Duration</span>
-                      </div>
-
-                      <div className="col-span-1 lg:col-span-1 text-right">
-                        <span className={`inline-flex items-center gap-2 px-5 py-2 rounded-full text-[9px] font-black uppercase tracking-widest border transition-all ${
-                          row.status === 'WORKING' ? 'bg-amber-50 text-amber-600 border-amber-100 animate-pulse' :
-                          row.status === 'OUT' ? 'bg-blue-50 text-blue-600 border-blue-100' :
-                          'bg-slate-50 text-slate-400 border-slate-100'
-                        }`}>
-                          {row.status}
-                        </span>
-                      </div>
+            <div className="space-y-8">
+              {!selectedStaff ? (
+                <>
+                  <header className="flex flex-col md:flex-row md:items-end justify-between gap-6">
+                    <div>
+                      <h2 className="text-4xl font-black uppercase tracking-tighter">Registry_Overview</h2>
+                      <p className="text-[10px] text-slate-400 uppercase font-bold tracking-widest mt-2">Active Range: {fromDate} to {toDate}</p>
                     </div>
+                    <div className="flex flex-col sm:flex-row gap-2">
+                      <div className="flex gap-1">
+                        <input type="date" max={today} className="px-3 py-2 bg-white border border-slate-200 rounded-xl text-[10px] font-black" value={fromDate} onChange={(e) => setFromDate(e.target.value)} />
+                        <input type="date" max={today} className="px-3 py-2 bg-white border border-slate-200 rounded-xl text-[10px] font-black" value={toDate} onChange={(e) => setToDate(e.target.value)} />
+                      </div>
+                      <input type="text" placeholder="FILTER..." className="px-4 py-2 bg-white border border-slate-200 rounded-xl text-[10px] font-black" value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} />
+                    </div>
+                  </header>
+
+                  <div className="grid grid-cols-1 gap-4">
+                    {registerSummary.map((row) => (
+                      <div key={row.name} onClick={() => setSelectedStaff(row.name)} className="bg-white border border-slate-100 rounded-[2rem] p-6 shadow-sm hover:border-slate-400 cursor-pointer transition-all">
+                        <div className="grid grid-cols-2 lg:grid-cols-5 items-center">
+                          <div className="col-span-2 lg:col-span-1"><p className="text-sm font-black uppercase">{row.name}</p></div>
+                          <div className="text-[12px] font-mono font-bold text-slate-400 lg:block hidden">IN: {row.lastIn}</div>
+                          <div className="text-[12px] font-mono font-bold text-slate-400 lg:block hidden">OUT: {row.lastOut}</div>
+                          <div className="text-[12px] font-mono font-black text-emerald-600">{row.totalHours}</div>
+                          <div className="text-right">
+                             <span className={`px-4 py-1.5 rounded-full text-[9px] font-black uppercase border ${row.status === 'WORKING' ? 'bg-amber-50 text-amber-600 border-amber-100' : 'bg-slate-50 text-slate-400 border-slate-100'}`}>{row.status}</span>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
                   </div>
-                ))}
-              </div>
-            </div>
-          )}
+                </>
+              ) : (
+                <div className="animate-in slide-in-from-left-4 duration-500 space-y-8">
+                   <button onClick={() => setSelectedStaff(null)} className="flex items-center gap-2 text-[10px] font-black uppercase text-slate-400 hover:text-slate-900 transition-colors">
+                    <ArrowLeft size={14}/> Back to Master Register
+                   </button>
+                   
+                   <div className="flex justify-between items-end">
+                      <div>
+                        <h2 className="text-5xl font-black uppercase tracking-tighter">{selectedStaff}</h2>
+                        <p className="text-[10px] text-slate-400 uppercase font-bold tracking-widest mt-2">Individual Session Report</p>
+                      </div>
+                      <div className="text-right">
+                        <p className="text-[9px] font-black text-slate-400 uppercase">Total_Time_InRange</p>
+                        <p className="text-3xl font-black text-emerald-500">{registerSummary.find(s => s.name === selectedStaff)?.totalHours}</p>
+                      </div>
+                   </div>
 
-          {activeTab === "enroll" && <div className="max-w-3xl mx-auto"><EnrollForm /></div>}
-
-          {activeTab === "overview" && (
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-8 animate-in fade-in duration-500">
-               <div className="bg-white p-10 rounded-[2.5rem] border shadow-sm">
-                  <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Innovators</p>
-                  <p className="text-5xl font-black mt-2">{staffList.length}</p>
+                   <div className="bg-white border border-slate-200 rounded-[3rem] overflow-hidden shadow-xl">
+                      <table className="w-full text-left">
+                        <thead className="bg-slate-50 border-b border-slate-100">
+                          <tr className="text-[9px] font-black uppercase text-slate-400 tracking-widest">
+                            <th className="px-10 py-6">Date</th>
+                            <th className="px-10 py-6">Check In</th>
+                            <th className="px-10 py-6">Check Out</th>
+                            <th className="px-10 py-6 text-right">Status</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-slate-50">
+                          {attendanceLogs
+                            .filter(l => l.name === selectedStaff)
+                            .sort((a, b) => (b.timestamp?.seconds || 0) - (a.timestamp?.seconds || 0))
+                            .map((log, idx) => (
+                            <tr key={idx} className="hover:bg-slate-50/50 transition-colors">
+                              <td className="px-10 py-6 text-[11px] font-black text-slate-900 uppercase">{log.date}</td>
+                              <td className="px-10 py-6 text-[11px] font-mono font-bold text-slate-500">{log.type === 'IN' ? log.timestamp?.toDate().toLocaleTimeString([], {hour:'2-digit', minute:'2-digit', hour12:false}) : '--'}</td>
+                              <td className="px-10 py-6 text-[11px] font-mono font-bold text-slate-500">{log.type === 'OUT' ? log.timestamp?.toDate().toLocaleTimeString([], {hour:'2-digit', minute:'2-digit', hour12:false}) : '--'}</td>
+                              <td className="px-10 py-6 text-right">
+                                <span className={`px-3 py-1 rounded-full text-[8px] font-black uppercase tracking-widest ${log.type === 'IN' ? 'bg-emerald-50 text-emerald-600' : 'bg-blue-50 text-blue-600'}`}>
+                                  {log.type}
+                                </span>
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                   </div>
                 </div>
-                <Link href="/kiosk" className="bg-slate-900 p-10 rounded-[2.5rem] text-white flex flex-col justify-between hover:scale-[1.03] transition-all">
-                  <ExternalLink size={28} className="text-emerald-400" />
-                  <p className="text-[11px] font-black uppercase tracking-widest mt-6">Open_Kiosk →</p>
-                </Link>
+              )}
             </div>
           )}
+
+          {activeTab === "enroll" && <EnrollForm />}
         </div>
       </main>
     </div>

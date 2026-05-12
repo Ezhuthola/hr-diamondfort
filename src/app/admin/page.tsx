@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { auth, db } from "@/lib/firebase";
+import { auth } from "@/lib/firebase";
 import { onAuthStateChanged, signOut } from "firebase/auth";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
@@ -14,7 +14,6 @@ export default function AdminPage() {
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (user) => {
       if (!user) {
-        // If not logged in, force them back to the login gate
         router.push("/login");
       } else {
         setUserEmail(user.email);
@@ -25,15 +24,19 @@ export default function AdminPage() {
   }, [router]);
 
   const handleLogout = async () => {
-    await signOut(auth);
-    router.push("/login");
+    try {
+      await signOut(auth);
+      router.push("/"); // Back to home screen after logout
+    } catch (error) {
+      console.error("Logout Error:", error);
+    }
   };
 
   if (loading) {
     return (
       <div className="min-h-screen bg-[#F8F9FA] flex flex-col items-center justify-center font-mono text-[10px] text-slate-400 uppercase tracking-widest">
         <div className="w-4 h-4 border-2 border-slate-200 border-t-slate-800 rounded-full animate-spin mb-4"></div>
-        Establishing_Secure_Link...
+        SECURE_SESSION_INITIALIZING...
       </div>
     );
   }
@@ -41,87 +44,67 @@ export default function AdminPage() {
   return (
     <div className="min-h-screen bg-[#F8F9FA] text-slate-800 font-mono flex">
       
-      {/* --- SIDEBAR NAVIGATION --- */}
-      <aside className="w-64 border-r border-slate-200 bg-white flex flex-col justify-between p-6">
+      {/* --- MINIMAL SIDEBAR --- */}
+      <aside className="w-72 border-r border-slate-200 bg-white flex flex-col justify-between p-8">
         <div>
-          <div className="mb-10">
+          <div className="mb-12">
             <h1 className="text-sm font-black tracking-tighter text-slate-900 uppercase">
               Diamond_Fort
             </h1>
-            <p className="text-[8px] text-slate-400 uppercase tracking-[0.2em]">Command_Center</p>
+            <p className="text-[8px] text-slate-400 uppercase tracking-[0.3em] mt-1">Admin_Node_01</p>
           </div>
 
-          <nav className="space-y-1">
-            <div className="text-[9px] text-slate-400 font-bold uppercase mb-4 tracking-widest opacity-50">Main_Modules</div>
-            <button className="w-full text-left p-3 rounded-xl bg-slate-900 text-white text-[10px] font-bold uppercase tracking-widest">
-              [ Dashboard ]
-            </button>
-            <button className="w-full text-left p-3 rounded-xl text-slate-400 hover:bg-slate-50 text-[10px] font-bold uppercase tracking-widest transition-all">
-              [ Staff_Directory ]
-            </button>
-            <button className="w-full text-left p-3 rounded-xl text-slate-400 hover:bg-slate-50 text-[10px] font-bold uppercase tracking-widest transition-all">
-              [ Attendance_Logs ]
-            </button>
-            <button className="w-full text-left p-3 rounded-xl text-slate-400 hover:bg-slate-50 text-[10px] font-bold uppercase tracking-widest transition-all">
-              [ System_Settings ]
+          <nav className="space-y-2">
+            <div className="text-[9px] text-slate-300 font-bold uppercase mb-4 tracking-widest">Navigation</div>
+            
+            {/* Simple Enrollment Menu */}
+            <button className="w-full text-left p-4 rounded-2xl bg-slate-900 text-white text-[10px] font-bold uppercase tracking-widest shadow-lg shadow-slate-200 flex justify-between items-center group">
+              Enroll Employee
+              <span className="opacity-0 group-hover:opacity-100 transition-opacity">→</span>
             </button>
           </nav>
         </div>
 
-        <div className="pt-6 border-t border-slate-100">
-          <div className="text-[8px] text-slate-400 uppercase mb-2">Authenticated_As:</div>
-          <div className="text-[9px] font-bold truncate mb-4">{userEmail}</div>
+        {/* User Info & Logout */}
+        <div className="space-y-6">
+          <div className="p-4 bg-slate-50 rounded-2xl border border-slate-100">
+            <div className="text-[8px] text-slate-400 uppercase mb-1">User_Auth</div>
+            <div className="text-[9px] font-bold text-slate-700 truncate">{userEmail}</div>
+          </div>
+          
           <button 
             onClick={handleLogout}
-            className="text-[10px] text-red-500 font-bold uppercase hover:underline"
+            className="w-full border border-red-100 bg-red-50/30 text-red-600 p-4 rounded-2xl text-[10px] font-bold uppercase tracking-widest hover:bg-red-50 transition-all flex items-center justify-center gap-2"
           >
-            [ Terminate_Session ]
+            [ Logout_Session ]
           </button>
         </div>
       </aside>
 
       {/* --- MAIN CONTENT AREA --- */}
-      <main className="flex-1 flex flex-col">
-        {/* Top Header */}
-        <header className="h-16 border-b border-slate-200 bg-white flex items-center justify-between px-8">
+      <main className="flex-1 flex flex-col bg-slate-50/50">
+        <header className="h-20 border-b border-slate-200 bg-white flex items-center justify-between px-10">
           <div className="flex items-center gap-3">
-            <span className="w-2 h-2 bg-emerald-500 rounded-full animate-pulse"></span>
-            <span className="text-[10px] font-bold uppercase tracking-widest text-slate-500">Node_Status: Online</span>
+            <div className="w-2 h-2 bg-emerald-500 rounded-full animate-pulse"></div>
+            <span className="text-[10px] font-bold uppercase tracking-[0.2em] text-slate-500">System_Status: Operational</span>
           </div>
-          <Link href="/kiosk" className="text-[10px] bg-slate-100 px-4 py-2 rounded-full font-bold hover:bg-slate-200 transition-all">
-            GO_TO_KIOSK →
+          <Link href="/kiosk" className="text-[10px] text-slate-400 font-bold hover:text-slate-900 transition-colors uppercase tracking-widest border-b border-transparent hover:border-slate-900 pb-1">
+            Switch_to_Kiosk
           </Link>
         </header>
 
-        {/* Content Body */}
-        <div className="p-10">
-          <div className="mb-10">
-            <h2 className="text-2xl font-black text-slate-900 tracking-tighter uppercase">Overview</h2>
-            <p className="text-xs text-slate-400 mt-1">Mission 2K36 // Infrastructure Management</p>
+        <div className="p-12 max-w-5xl">
+          <div className="mb-12">
+            <h2 className="text-3xl font-black text-slate-900 tracking-tighter uppercase">Command_Interface</h2>
+            <p className="text-xs text-slate-400 mt-2 tracking-wide uppercase">Select a module from the sidebar to begin.</p>
           </div>
 
-          {/* Metric Grid (Blank States) */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            <div className="p-6 bg-white border border-slate-200 rounded-3xl shadow-sm">
-                <div className="text-[9px] font-bold text-slate-400 uppercase tracking-widest mb-4">Total_Staff</div>
-                <div className="text-3xl font-black text-slate-900">00</div>
-            </div>
-            <div className="p-6 bg-white border border-slate-200 rounded-3xl shadow-sm">
-                <div className="text-[9px] font-bold text-slate-400 uppercase tracking-widest mb-4">Present_Today</div>
-                <div className="text-3xl font-black text-slate-900">00</div>
-            </div>
-            <div className="p-6 bg-white border border-slate-200 rounded-3xl shadow-sm">
-                <div className="text-[9px] font-bold text-slate-400 uppercase tracking-widest mb-4">System_Alerts</div>
-                <div className="text-3xl font-black text-slate-300">NONE</div>
-            </div>
-          </div>
-
-          {/* Placeholder for future module content */}
-          <div className="mt-10 w-full aspect-video border-2 border-dashed border-slate-200 rounded-[2.5rem] flex flex-col items-center justify-center text-slate-300 gap-4">
-             <div className="text-[10px] font-bold tracking-[0.4em] uppercase">Module_Waiting_Deployment</div>
-             <p className="text-[9px] max-w-xs text-center leading-relaxed">
-               Ready to initialize the Staff Enrollment and Face Analysis engine.
-             </p>
+          {/* Placeholder for Enrollment Form */}
+          <div className="w-full aspect-video border-2 border-dashed border-slate-200 rounded-[3rem] bg-white/50 flex flex-col items-center justify-center text-slate-300 transition-all hover:border-slate-300">
+             <div className="w-12 h-12 border-2 border-slate-100 rounded-full flex items-center justify-center mb-4">
+                <span className="text-xl">+</span>
+             </div>
+             <div className="text-[10px] font-bold tracking-[0.5em] uppercase">Ready_to_Enroll</div>
           </div>
         </div>
       </main>

@@ -7,7 +7,7 @@ import { collection, query, orderBy, onSnapshot, where } from "firebase/firestor
 import { useRouter } from "next/navigation";
 import EnrollForm from "./EnrollForm"; 
 import { 
-  Menu, X, LayoutDashboard, UserPlus, LogOut, Calendar, Search, Clock, ArrowLeft, ShieldCheck, Briefcase
+  Menu, X, LayoutDashboard, UserPlus, LogOut, Calendar, Search, Clock, ArrowLeft, ShieldCheck
 } from "lucide-react";
 
 export default function AdminPage() {
@@ -49,65 +49,69 @@ export default function AdminPage() {
     return () => { unsubStaff(); unsubAttend(); };
   }, [fromDate, toDate]);
 
-  // Master Logic: Expands logs into session rows
-  const registerRows = useMemo(() => {
-    const rows: any[] = [];
-    
-    staffList.forEach(staff => {
-      const personLogs = attendanceLogs
-        .filter(l => l.name === staff.name)
-        .sort((a, b) => (a.timestamp?.seconds || 0) - (b.timestamp?.seconds || 0));
+  // Logic to process logs into sessions
+  const processSessions = (name: string) => {
+    const personLogs = attendanceLogs
+      .filter(l => l.name === name)
+      .sort((a, b) => (a.timestamp?.seconds || 0) - (b.timestamp?.seconds || 0));
 
-      if (personLogs.length === 0) {
-        // Only show ABSENT if the range is a single day (today)
-        if (fromDate === toDate) {
-          rows.push({ name: staff.name, date: fromDate, inTime: "--:--", outTime: "--:--", workTime: "--:--", status: "ABSENT" });
-        }
-        return;
+    const sessions: any[] = [];
+    let totalMs = 0;
+
+    for (let i = 0; i < personLogs.length; i += 2) {
+      const inLog = personLogs[i];
+      const outLog = personLogs[i + 1];
+      
+      let workTime = "--:--";
+      let status = "ON DUTY";
+      let outTimeStr = "--:--";
+
+      if (outLog) {
+        const diffMs = outLog.timestamp?.toDate().getTime() - inLog.timestamp?.toDate().getTime();
+        totalMs += diffMs;
+        const totalMins = Math.floor(diffMs / 60000);
+        workTime = `${Math.floor(totalMins/60).toString().padStart(2,'0')}:${(totalMins%60).toString().padStart(2,'0')}`;
+        outTimeStr = outLog.timestamp?.toDate().toLocaleTimeString([], {hour:'2-digit', minute:'2-digit', hour12:false});
+        status = "OUT";
       }
 
-      // Group logs by Date to handle multiple sessions in one day
-      const logsByDate = personLogs.reduce((acc: any, log) => {
-        if (!acc[log.date]) acc[log.date] = [];
-        acc[log.date].push(log);
-        return acc;
-      }, {});
-
-      Object.keys(logsByDate).forEach(date => {
-        const dayLogs = logsByDate[date];
-        for (let i = 0; i < dayLogs.length; i += 2) {
-          const inLog = dayLogs[i];
-          const outLog = dayLogs[i+1];
-          
-          let workTime = "--:--";
-          let status = "ON DUTY";
-          let outTimeStr = "--:--";
-
-          if (outLog) {
-            const diffMs = outLog.timestamp?.toDate().getTime() - inLog.timestamp?.toDate().getTime();
-            const totalMins = Math.floor(diffMs / 60000);
-            workTime = `${Math.floor(totalMins/60).toString().padStart(2,'0')}:${(totalMins%60).toString().padStart(2,'0')}`;
-            outTimeStr = outLog.timestamp?.toDate().toLocaleTimeString([], {hour:'2-digit', minute:'2-digit', hour12:false});
-            status = "OUT";
-          }
-
-          rows.push({
-            name: staff.name,
-            date: date,
-            inTime: inLog.timestamp?.toDate().toLocaleTimeString([], {hour:'2-digit', minute:'2-digit', hour12:false}),
-            outTime: outTimeStr,
-            workTime,
-            status
-          });
-        }
+      sessions.push({
+        name,
+        date: inLog.date,
+        inTime: inLog.timestamp?.toDate().toLocaleTimeString([], {hour:'2-digit', minute:'2-digit', hour12:false}),
+        outTime: outTimeStr,
+        workTime,
+        status
       });
-    });
+    }
 
-    return rows.filter(r => r.name.toLowerCase().includes(searchTerm.toLowerCase()))
-               .sort((a, b) => b.date.localeCompare(a.date)); // Most recent date first
+    const totalMins = Math.floor(totalMs / 60000);
+    const cumulativeTime = `${Math.floor(totalMins/60).toString().padStart(2,'0')}:${(totalMins%60).toString().padStart(2,'0')}`;
+
+    return { sessions, cumulativeTime };
+  };
+
+  // Master Summary (1 Row Per Person)
+  const masterSummary = useMemo(() => {
+    return staffList.map(staff => {
+      const { sessions, cumulativeTime } = processSessions(staff.name);
+      
+      if (sessions.length === 0) {
+        return { name: staff.name, date: fromDate, inTime: "--:--", outTime: "--:--", workTime: "--:--", status: "ABSENT" };
+      }
+
+      // Return the LATEST session for the master view
+      const latest = sessions[sessions.length - 1];
+      return { ...latest, workTime: cumulativeTime }; // Show total hours for the range in master view
+    }).filter(s => s.name.toLowerCase().includes(searchTerm.toLowerCase()));
   }, [staffList, attendanceLogs, searchTerm, fromDate, toDate]);
 
-  const displayData = selectedStaff ? registerRows.filter(r => r.name === selectedStaff) : registerRows;
+  // Detailed View (Multiple Rows Per Person)
+  const detailedView = useMemo(() => {
+    if (!selectedStaff) return [];
+    const { sessions } = processSessions(selectedStaff);
+    return [...sessions].reverse(); // Show newest sessions first
+  }, [selectedStaff, attendanceLogs]);
 
   if (loading) return <div className="min-h-screen bg-white flex items-center justify-center font-mono text-[10px] uppercase tracking-widest">Initialising_Protocol...</div>;
 
@@ -134,34 +138,35 @@ export default function AdminPage() {
       <main className="flex-1 p-4 lg:p-12 overflow-y-auto">
         <div className="max-w-6xl mx-auto">
           {activeTab === "attendance" && (
-            <div className="space-y-8">
+            <div className="space-y-8 animate-in fade-in duration-500">
               <header className="flex flex-col md:flex-row md:items-end justify-between gap-6">
                 <div>
                   <div className="flex items-center gap-3">
-                    {selectedStaff && <button onClick={() => setSelectedStaff(null)} className="p-2 bg-slate-100 rounded-full hover:bg-slate-200 transition-all"><ArrowLeft size={16}/></button>}
-                    <h2 className="text-4xl font-black uppercase tracking-tighter">{selectedStaff ? selectedStaff : "Workforce_Register"}</h2>
+                    {selectedStaff && <button onClick={() => setSelectedStaff(null)} className="p-2 bg-slate-100 rounded-full hover:bg-slate-200"><ArrowLeft size={16}/></button>}
+                    <h2 className="text-4xl font-black uppercase tracking-tighter">{selectedStaff ? selectedStaff : "Master_Registry"}</h2>
                   </div>
-                  <p className="text-[10px] text-slate-400 uppercase font-bold tracking-widest mt-2">RANGE: {fromDate} TO {toDate}</p>
+                  <p className="text-[10px] text-slate-400 uppercase font-bold tracking-widest mt-2">
+                    {selectedStaff ? `Audit Trail for ${selectedStaff}` : `Range Status: ${fromDate} - ${toDate}`}
+                  </p>
                 </div>
-                <div className="flex flex-col sm:flex-row gap-2">
-                  <div className="flex gap-1">
-                    <input type="date" max={today} className="px-3 py-2 bg-white border border-slate-200 rounded-xl text-[10px] font-black" value={fromDate} onChange={(e) => setFromDate(e.target.value)} />
-                    <input type="date" max={today} className="px-3 py-2 bg-white border border-slate-200 rounded-xl text-[10px] font-black" value={toDate} onChange={(e) => setToDate(e.target.value)} />
+                {!selectedStaff && (
+                  <div className="flex flex-col sm:flex-row gap-2">
+                    <div className="flex gap-1">
+                      <input type="date" max={today} className="px-3 py-2 bg-white border border-slate-200 rounded-xl text-[10px] font-black" value={fromDate} onChange={(e) => setFromDate(e.target.value)} />
+                      <input type="date" max={today} className="px-3 py-2 bg-white border border-slate-200 rounded-xl text-[10px] font-black" value={toDate} onChange={(e) => setToDate(e.target.value)} />
+                    </div>
+                    <input type="text" placeholder="FILTER..." className="px-4 py-2 bg-white border border-slate-200 rounded-xl text-[10px] font-black" value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} />
                   </div>
-                  <div className="relative">
-                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-300" size={14} />
-                    <input type="text" placeholder="FILTER NAME..." className="pl-10 pr-4 py-2 bg-white border border-slate-200 rounded-xl text-[10px] font-black" value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} />
-                  </div>
-                </div>
+                )}
               </header>
 
               <div className="space-y-4">
                 <div className="hidden lg:grid grid-cols-6 px-10 py-2 text-[8px] font-black text-slate-400 uppercase tracking-[0.2em]">
-                  <div>Date</div><div>Personnel</div><div>In</div><div>Out</div><div>Work</div><div className="text-right">Status</div>
+                  <div>Date</div><div>Personnel</div><div>In</div><div>Out</div><div>{selectedStaff ? "Work" : "Total"}</div><div className="text-right">Status</div>
                 </div>
 
-                {displayData.map((row, idx) => (
-                  <div key={idx} onClick={() => !selectedStaff && setSelectedStaff(row.name)} className={`bg-white border border-slate-100 rounded-[2.2rem] p-6 lg:px-10 lg:py-5 shadow-sm transition-all ${!selectedStaff ? "cursor-pointer hover:border-slate-300" : ""}`}>
+                {(selectedStaff ? detailedView : masterSummary).map((row, idx) => (
+                  <div key={idx} onClick={() => !selectedStaff && row.status !== "ABSENT" && setSelectedStaff(row.name)} className={`bg-white border border-slate-100 rounded-[2.2rem] p-6 lg:px-10 lg:py-5 shadow-sm transition-all ${!selectedStaff && row.status !== "ABSENT" ? "cursor-pointer hover:border-slate-300" : ""}`}>
                     <div className="grid grid-cols-2 lg:grid-cols-6 items-center gap-y-6 lg:gap-4">
                       <div>
                         <p className="text-[11px] font-black text-slate-900">{row.date}</p>
@@ -175,9 +180,7 @@ export default function AdminPage() {
                       <div className="text-[12px] font-mono font-black text-slate-600">
                         {row.outTime === "--:--" ? (row.status === 'ON DUTY' ? <span className="text-emerald-500 animate-pulse">ACTIVE</span> : "--:--") : row.outTime}
                       </div>
-                      <div className="text-[11px] font-mono font-black text-emerald-600">
-                        {row.workTime}
-                      </div>
+                      <div className="text-[11px] font-mono font-black text-emerald-600">{row.workTime}</div>
                       <div className="text-right">
                         <span className={`px-4 py-1.5 rounded-full text-[8px] font-black uppercase tracking-widest border ${
                           row.status === 'ON DUTY' ? 'bg-amber-50 text-amber-600 border-amber-100' : 

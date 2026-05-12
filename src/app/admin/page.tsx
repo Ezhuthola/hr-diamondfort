@@ -111,108 +111,110 @@ export default function AdminPage() {
     return [...sessions].reverse();
   }, [selectedStaff, attendanceLogs]);
 
-  if (loading) return <div className="min-h-screen bg-white flex items-center justify-center font-mono text-xs uppercase tracking-widest animate-pulse">Syncing_Data...</div>;
+  if (loading) return <div className="min-h-screen bg-white flex items-center justify-center font-mono text-xs uppercase tracking-widest animate-pulse">Establishing_Link...</div>;
 
   return (
     <div className="min-h-screen bg-[#F4F7F9] text-slate-900 font-mono flex flex-col lg:flex-row">
       
-      {/* SIDEBAR */}
-      <aside className={`fixed inset-y-0 left-0 z-50 w-64 bg-white border-r border-slate-200 transition-transform lg:relative lg:translate-x-0 ${isMenuOpen ? "translate-x-0 shadow-2xl" : "-translate-x-full"}`}>
-        <div className="p-6 flex flex-col h-full">
-          <div className="mb-10 flex items-center gap-3">
-            <div className="w-10 h-10 bg-black rounded-xl flex items-center justify-center text-white"><ShieldCheck size={20} /></div>
+      {/* SIDEBAR - Fixed Width */}
+      <aside className={`fixed inset-y-0 left-0 z-50 w-72 bg-white border-r border-slate-200 transition-transform lg:relative lg:translate-x-0 ${isMenuOpen ? "translate-x-0 shadow-2xl" : "-translate-x-full"}`}>
+        <div className="p-8 flex flex-col h-full">
+          <div className="mb-12 flex items-center gap-4">
+            <div className="w-10 h-10 bg-black rounded-2xl flex items-center justify-center text-white"><ShieldCheck size={20} /></div>
             <h1 className="font-black text-sm uppercase tracking-tight">Diamond_Fort</h1>
           </div>
           
-          <nav className="space-y-2 flex-1">
+          <nav className="space-y-3 flex-1">
             {[
               { id: 'dashboard', icon: LayoutDashboard, label: 'Overview' },
               { id: 'attendance', icon: Clock, label: 'Registry' },
               { id: 'enroll', icon: UserPlus, label: 'Personnel' }
             ].map((item) => (
               <button key={item.id} onClick={() => {setActiveTab(item.id as any); setSelectedStaff(null); setIsMenuOpen(false)}} 
-                className={`w-full flex items-center gap-4 px-5 py-4 rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all ${activeTab === item.id ? "bg-black text-white shadow-lg shadow-black/10" : "text-slate-500 hover:bg-slate-50"}`}>
-                <item.icon size={18}/> {item.label}
+                className={`w-full flex items-center gap-4 px-6 py-4 rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all ${activeTab === item.id ? "bg-black text-white shadow-xl shadow-black/20" : "text-slate-500 hover:bg-slate-50"}`}>
+                <item.icon size={20}/> {item.label}
               </button>
             ))}
           </nav>
 
-          <button onClick={() => signOut(auth)} className="mt-4 px-5 py-4 text-red-600 text-[10px] font-black uppercase rounded-2xl bg-red-50 flex items-center gap-4 hover:bg-red-600 hover:text-white transition-all">
-            <LogOut size={18}/> Logout
+          <button onClick={() => signOut(auth)} className="mt-4 px-6 py-4 text-red-600 text-[10px] font-black uppercase rounded-2xl bg-red-50 flex items-center gap-4 hover:bg-red-600 hover:text-white transition-all">
+            <LogOut size={20}/> Logout
           </button>
         </div>
       </aside>
 
       {/* MOBILE TOP BAR */}
-      <div className="lg:hidden h-16 bg-white border-b border-slate-200 px-6 flex items-center justify-between sticky top-0 z-40">
-        <span className="font-black text-xs uppercase tracking-widest text-slate-900">Control_Panel</span>
-        <button onClick={() => setIsMenuOpen(!isMenuOpen)} className="p-2 bg-slate-100 rounded-xl text-slate-900">
-          {isMenuOpen ? <X size={22}/> : <Menu size={22}/>}
+      <div className="lg:hidden h-20 bg-white border-b border-slate-200 px-8 flex items-center justify-between sticky top-0 z-40">
+        <span className="font-black text-sm uppercase tracking-widest text-slate-900">Control_Panel</span>
+        <button onClick={() => setIsMenuOpen(!isMenuOpen)} className="p-3 bg-slate-100 rounded-2xl text-slate-900">
+          {isMenuOpen ? <X size={24}/> : <Menu size={24}/>}
         </button>
       </div>
 
-      <main className="flex-1 p-4 lg:p-10 overflow-y-auto">
-        <div className="max-w-5xl mx-auto">
+      <main className="flex-1 p-6 lg:p-12 overflow-y-auto">
+        {/* THE CONSTRAINER: Prevents infinite stretch on big screens */}
+        <div className="max-w-7xl mx-auto space-y-10">
           
-          {/* DASHBOARD */}
+          {/* DASHBOARD - Cards adapt to screen width */}
           {activeTab === "dashboard" && (
-            <div className="space-y-6 animate-in fade-in slide-in-from-bottom-2 duration-500">
-              <header className="mb-8">
-                <h2 className="text-4xl lg:text-5xl font-black uppercase tracking-tighter text-slate-900">Operational_Pulse</h2>
-                <div className="h-1 w-20 bg-black mt-2"></div>
+            <div className="animate-in fade-in slide-in-from-bottom-2 duration-500 space-y-10">
+              <header>
+                <h2 className="text-4xl lg:text-6xl font-black uppercase tracking-tighter text-slate-900">Operational_Pulse</h2>
+                <div className="h-1.5 w-24 bg-black mt-4"></div>
               </header>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
-                <div className="bg-white p-8 lg:p-10 rounded-[2.5rem] border border-slate-200 shadow-sm flex flex-col justify-between h-48 lg:h-56">
-                  <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Total_Innovators</p>
-                  <p className="text-6xl lg:text-7xl font-black text-slate-900">{staffList.length}</p>
+              <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+                <div className="bg-white p-10 rounded-[3rem] border border-slate-200 shadow-sm flex flex-col justify-between h-56 lg:h-64">
+                  <p className="text-xs font-black text-slate-400 uppercase tracking-widest">Total_Innovators</p>
+                  <p className="text-7xl lg:text-8xl font-black text-slate-900">{staffList.length}</p>
                 </div>
-                <div className="bg-white p-8 lg:p-10 rounded-[2.5rem] border border-slate-200 shadow-sm flex flex-col justify-between h-48 lg:h-56">
-                  <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Currently_On_Duty</p>
-                  <p className="text-6xl lg:text-7xl font-black text-emerald-500">{masterSummary.filter(s => s.status === 'ON DUTY').length}</p>
+                <div className="bg-white p-10 rounded-[3rem] border border-slate-200 shadow-sm flex flex-col justify-between h-56 lg:h-64">
+                  <p className="text-xs font-black text-slate-400 uppercase tracking-widest">Currently_On_Duty</p>
+                  <p className="text-7xl lg:text-8xl font-black text-emerald-500">{masterSummary.filter(s => s.status === 'ON DUTY').length}</p>
                 </div>
-                <button onClick={() => setActiveTab("attendance")} className="bg-black p-8 lg:p-10 rounded-[2.5rem] text-white flex flex-col justify-between h-48 lg:h-56 hover:bg-slate-900 transition-all group">
-                   <Clock className="text-emerald-400" size={32} />
-                   <p className="text-xs font-black uppercase tracking-widest flex items-center justify-between">Registry_Audit <ChevronRight size={18} className="group-hover:translate-x-2 transition-transform"/></p>
+                <button onClick={() => setActiveTab("attendance")} className="bg-black p-10 rounded-[3rem] text-white flex flex-col justify-between h-56 lg:h-64 hover:bg-slate-900 transition-all group md:col-span-2 xl:col-span-1">
+                   <Clock className="text-emerald-400" size={40} />
+                   <p className="text-sm font-black uppercase tracking-widest flex items-center justify-between">Registry_Audit <ChevronRight size={24} className="group-hover:translate-x-3 transition-transform"/></p>
                 </button>
               </div>
             </div>
           )}
 
-          {/* ATTENDANCE */}
+          {/* ATTENDANCE - Dynamic Grid for Big Screens */}
           {activeTab === "attendance" && (
-            <div className="space-y-6 animate-in fade-in duration-300">
-              <header className="flex flex-col gap-6">
-                <div className="flex items-center gap-4">
-                  {selectedStaff && <button onClick={() => setSelectedStaff(null)} className="p-3 bg-white border border-slate-200 rounded-2xl shadow-sm text-slate-900 hover:bg-slate-50"><ArrowLeft size={20}/></button>}
-                  <h2 className="text-3xl lg:text-4xl font-black uppercase tracking-tighter text-slate-900">{selectedStaff || "Workforce_Registry"}</h2>
+            <div className="space-y-10 animate-in fade-in duration-300">
+              <header className="flex flex-col xl:flex-row xl:items-end justify-between gap-8">
+                <div className="flex items-center gap-5">
+                  {selectedStaff && <button onClick={() => setSelectedStaff(null)} className="p-4 bg-white border border-slate-200 rounded-3xl shadow-sm text-slate-900 hover:bg-slate-50"><ArrowLeft size={24}/></button>}
+                  <h2 className="text-4xl lg:text-5xl font-black uppercase tracking-tighter text-slate-900">{selectedStaff || "Workforce_Registry"}</h2>
                 </div>
                 {!selectedStaff && (
-                  <div className="flex flex-col md:flex-row gap-3">
-                    <div className="flex bg-white p-1 rounded-2xl border border-slate-200 shadow-sm w-full md:w-auto">
-                      <input type="date" max={today} className="flex-1 px-4 py-3 text-[10px] font-black uppercase bg-transparent" value={fromDate} onChange={(e) => setFromDate(e.target.value)} />
-                      <div className="w-px bg-slate-100 my-2"></div>
-                      <input type="date" max={today} className="flex-1 px-4 py-3 text-[10px] font-black uppercase bg-transparent" value={toDate} onChange={(e) => setToDate(e.target.value)} />
+                  <div className="flex flex-col md:flex-row gap-4">
+                    <div className="flex bg-white p-1.5 rounded-3xl border border-slate-200 shadow-sm w-full md:w-auto">
+                      <input type="date" className="px-5 py-4 text-xs font-black uppercase bg-transparent" value={fromDate} onChange={(e) => setFromDate(e.target.value)} />
+                      <div className="w-px bg-slate-100 my-3"></div>
+                      <input type="date" className="px-5 py-4 text-xs font-black uppercase bg-transparent" value={toDate} onChange={(e) => setToDate(e.target.value)} />
                     </div>
-                    <div className="relative flex-1">
-                      <Search className="absolute left-5 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
-                      <input type="text" placeholder="FILTER BY NAME..." className="w-full pl-12 pr-6 py-4 bg-white border border-slate-200 shadow-sm rounded-2xl text-[10px] font-black uppercase tracking-widest focus:ring-2 focus:ring-black outline-none" value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} />
+                    <div className="relative flex-1 md:w-80">
+                      <Search className="absolute left-6 top-1/2 -translate-y-1/2 text-slate-400" size={20} />
+                      <input type="text" placeholder="FILTER NAME..." className="w-full pl-14 pr-8 py-5 bg-white border border-slate-200 shadow-sm rounded-3xl text-xs font-black uppercase tracking-widest focus:ring-2 focus:ring-black outline-none" value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} />
                     </div>
                   </div>
                 )}
               </header>
 
-              <div className="grid grid-cols-1 gap-4">
+              {/* GRID CHANGE: 1 col on mobile, 2 cols on tablet/large screens */}
+              <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-2 2xl:grid-cols-3 gap-6">
                 {(selectedStaff ? detailedView : masterSummary).map((row, idx) => (
                   <div key={idx} onClick={() => !selectedStaff && row.status !== "ABSENT" && setSelectedStaff(row.name)} 
-                    className={`bg-white border border-slate-200 rounded-[2rem] p-6 lg:p-8 shadow-sm transition-all ${!selectedStaff && row.status !== "ABSENT" ? "cursor-pointer active:scale-[0.98] hover:border-slate-400" : ""}`}>
+                    className={`bg-white border border-slate-200 rounded-[2.5rem] p-8 lg:p-10 shadow-sm flex flex-col justify-between transition-all ${!selectedStaff && row.status !== "ABSENT" ? "cursor-pointer active:scale-[0.98] hover:border-black hover:shadow-xl" : ""}`}>
                     
-                    <div className="flex justify-between items-start mb-6">
-                      <div className="space-y-1">
-                        <p className="text-xs font-black text-slate-900 uppercase tracking-tighter">{row.name}</p>
-                        <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest">{row.date}</p>
+                    <div className="flex justify-between items-start mb-10">
+                      <div className="space-y-2">
+                        <p className="text-lg font-black text-slate-900 uppercase tracking-tighter leading-none">{row.name}</p>
+                        <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">{row.date}</p>
                       </div>
-                      <div className={`px-5 py-2 rounded-full text-[9px] font-black uppercase tracking-widest border-2 ${
+                      <div className={`px-6 py-2.5 rounded-full text-[10px] font-black uppercase tracking-widest border-2 ${
                         row.status === 'ON DUTY' ? 'bg-amber-50 text-amber-600 border-amber-100' : 
                         row.status === 'OUT' ? 'bg-blue-50 text-blue-600 border-blue-100' : 'bg-slate-50 text-slate-400 border-slate-100'
                       }`}>
@@ -220,20 +222,20 @@ export default function AdminPage() {
                       </div>
                     </div>
 
-                    <div className="grid grid-cols-3 gap-2 border-t border-slate-50 pt-6">
-                      <div className="space-y-1">
-                        <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest">Check_In</p>
-                        <p className="text-sm font-mono font-black text-slate-900">{row.inTime}</p>
+                    <div className="grid grid-cols-3 gap-4 pt-10 border-t border-slate-100">
+                      <div className="space-y-2">
+                        <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">In</p>
+                        <p className="text-base font-mono font-black text-slate-900">{row.inTime}</p>
                       </div>
-                      <div className="space-y-1 border-x border-slate-100 px-4">
-                        <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest">Check_Out</p>
-                        <p className="text-sm font-mono font-black text-slate-900">
-                          {row.outTime === "--:--" && row.status === 'ON DUTY' ? <span className="text-emerald-500 animate-pulse">ACTIVE</span> : row.outTime}
+                      <div className="space-y-2 border-x border-slate-100 px-4">
+                        <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Out</p>
+                        <p className="text-base font-mono font-black text-slate-900">
+                          {row.outTime === "--:--" && row.status === 'ON DUTY' ? <span className="text-emerald-500 animate-pulse uppercase">Active</span> : row.outTime}
                         </p>
                       </div>
-                      <div className="space-y-1 text-right">
-                        <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest">{selectedStaff ? "Session" : "Total_Hours"}</p>
-                        <p className="text-sm font-mono font-black text-emerald-600">{row.workTime}</p>
+                      <div className="space-y-2 text-right">
+                        <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Total</p>
+                        <p className="text-base font-mono font-black text-emerald-600">{row.workTime}</p>
                       </div>
                     </div>
                   </div>
@@ -242,29 +244,29 @@ export default function AdminPage() {
             </div>
           )}
 
-          {/* PERSONNEL MANAGEMENT */}
+          {/* PERSONNEL */}
           {activeTab === "enroll" && (
             <div className="space-y-12 animate-in fade-in duration-500">
-              <div className="max-w-xl mx-auto bg-white p-8 lg:p-10 rounded-[2.5rem] border border-slate-200 shadow-sm">
+              <div className="max-w-2xl mx-auto bg-white p-10 rounded-[3rem] border border-slate-200 shadow-sm">
                 <EnrollForm />
               </div>
               
-              <div className="space-y-6">
-                <div className="flex items-center justify-between">
-                  <h3 className="text-2xl font-black uppercase tracking-tighter text-slate-900 flex items-center gap-3">
-                    <Users size={24} /> Registered_Personnel
+              <div className="space-y-8">
+                <div className="flex items-center justify-between border-b border-slate-200 pb-6">
+                  <h3 className="text-3xl font-black uppercase tracking-tighter text-slate-900 flex items-center gap-4">
+                    <Users size={32} /> Personnel_List
                   </h3>
-                  <span className="bg-slate-100 text-[10px] font-black px-4 py-1.5 rounded-full">{staffList.length} TOTAL</span>
+                  <span className="bg-black text-white text-xs font-black px-6 py-2 rounded-full">{staffList.length} REGISTERED</span>
                 </div>
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
                   {staffList.map((staff) => (
-                    <div key={staff.id} className="bg-white p-6 rounded-2xl border border-slate-200 flex items-center justify-between hover:shadow-md transition-shadow group">
+                    <div key={staff.id} className="bg-white p-6 rounded-[2rem] border border-slate-200 flex items-center justify-between hover:border-black transition-all group">
                       <div>
-                        <p className="text-xs font-black uppercase tracking-tighter text-slate-900">{staff.name}</p>
-                        <p className="text-[8px] text-slate-400 font-bold uppercase tracking-widest mt-1">{staff.role || 'Innovator'}</p>
+                        <p className="text-sm font-black uppercase tracking-tighter text-slate-900">{staff.name}</p>
+                        <p className="text-[9px] text-slate-400 font-bold uppercase mt-1">{staff.role || 'Innovator'}</p>
                       </div>
-                      <button onClick={() => handleDeleteStaff(staff.id)} className="p-2.5 text-slate-300 hover:text-red-600 hover:bg-red-50 rounded-xl transition-all">
-                        <Trash2 size={18} />
+                      <button onClick={() => handleDeleteStaff(staff.id)} className="p-3 text-slate-300 hover:text-red-600 hover:bg-red-50 rounded-2xl transition-all">
+                        <Trash2 size={20} />
                       </button>
                     </div>
                   ))}

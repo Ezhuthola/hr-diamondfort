@@ -19,6 +19,7 @@ export default function AdminPage() {
   const [attendanceLogs, setAttendanceLogs] = useState<any[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
   
+  // DATE LOCK: Current Date calculation
   const today = new Date().toISOString().split('T')[0];
   const [fromDate, setFromDate] = useState(today);
   const [toDate, setToDate] = useState(today);
@@ -50,7 +51,7 @@ export default function AdminPage() {
   }, [fromDate, toDate]);
 
   const handleDeleteStaff = async (id: string) => {
-    if(confirm("Permanently remove this personnel?")) {
+    if(confirm("Permanently remove this employee?")) {
       await deleteDoc(doc(db, "staff", id));
     }
   };
@@ -116,7 +117,7 @@ export default function AdminPage() {
   return (
     <div className="min-h-screen bg-[#F4F7F9] text-slate-900 font-mono flex flex-col lg:flex-row">
       
-      {/* SIDEBAR - Fixed Width */}
+      {/* SIDEBAR */}
       <aside className={`fixed inset-y-0 left-0 z-50 w-72 bg-white border-r border-slate-200 transition-transform lg:relative lg:translate-x-0 ${isMenuOpen ? "translate-x-0 shadow-2xl" : "-translate-x-full"}`}>
         <div className="p-8 flex flex-col h-full">
           <div className="mb-12 flex items-center gap-4">
@@ -128,7 +129,7 @@ export default function AdminPage() {
             {[
               { id: 'dashboard', icon: LayoutDashboard, label: 'Overview' },
               { id: 'attendance', icon: Clock, label: 'Registry' },
-              { id: 'enroll', icon: UserPlus, label: 'Personnel' }
+              { id: 'enroll', icon: UserPlus, label: 'Employees' }
             ].map((item) => (
               <button key={item.id} onClick={() => {setActiveTab(item.id as any); setSelectedStaff(null); setIsMenuOpen(false)}} 
                 className={`w-full flex items-center gap-4 px-6 py-4 rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all ${activeTab === item.id ? "bg-black text-white shadow-xl shadow-black/20" : "text-slate-500 hover:bg-slate-50"}`}>
@@ -152,10 +153,9 @@ export default function AdminPage() {
       </div>
 
       <main className="flex-1 p-6 lg:p-12 overflow-y-auto">
-        {/* THE CONSTRAINER: Prevents infinite stretch on big screens */}
         <div className="max-w-7xl mx-auto space-y-10">
           
-          {/* DASHBOARD - Cards adapt to screen width */}
+          {/* DASHBOARD */}
           {activeTab === "dashboard" && (
             <div className="animate-in fade-in slide-in-from-bottom-2 duration-500 space-y-10">
               <header>
@@ -165,7 +165,7 @@ export default function AdminPage() {
 
               <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
                 <div className="bg-white p-10 rounded-[3rem] border border-slate-200 shadow-sm flex flex-col justify-between h-56 lg:h-64">
-                  <p className="text-xs font-black text-slate-400 uppercase tracking-widest">Total_Innovators</p>
+                  <p className="text-xs font-black text-slate-400 uppercase tracking-widest">Total_Employees</p>
                   <p className="text-7xl lg:text-8xl font-black text-slate-900">{staffList.length}</p>
                 </div>
                 <div className="bg-white p-10 rounded-[3rem] border border-slate-200 shadow-sm flex flex-col justify-between h-56 lg:h-64">
@@ -180,7 +180,7 @@ export default function AdminPage() {
             </div>
           )}
 
-          {/* ATTENDANCE - Dynamic Grid for Big Screens */}
+          {/* ATTENDANCE */}
           {activeTab === "attendance" && (
             <div className="space-y-10 animate-in fade-in duration-300">
               <header className="flex flex-col xl:flex-row xl:items-end justify-between gap-8">
@@ -191,9 +191,9 @@ export default function AdminPage() {
                 {!selectedStaff && (
                   <div className="flex flex-col md:flex-row gap-4">
                     <div className="flex bg-white p-1.5 rounded-3xl border border-slate-200 shadow-sm w-full md:w-auto">
-                      <input type="date" className="px-5 py-4 text-xs font-black uppercase bg-transparent" value={fromDate} onChange={(e) => setFromDate(e.target.value)} />
+                      <input type="date" max={today} className="px-5 py-4 text-xs font-black uppercase bg-transparent" value={fromDate} onChange={(e) => setFromDate(e.target.value)} />
                       <div className="w-px bg-slate-100 my-3"></div>
-                      <input type="date" className="px-5 py-4 text-xs font-black uppercase bg-transparent" value={toDate} onChange={(e) => setToDate(e.target.value)} />
+                      <input type="date" max={today} className="px-5 py-4 text-xs font-black uppercase bg-transparent" value={toDate} onChange={(e) => setToDate(e.target.value)} />
                     </div>
                     <div className="relative flex-1 md:w-80">
                       <Search className="absolute left-6 top-1/2 -translate-y-1/2 text-slate-400" size={20} />
@@ -203,7 +203,6 @@ export default function AdminPage() {
                 )}
               </header>
 
-              {/* GRID CHANGE: 1 col on mobile, 2 cols on tablet/large screens */}
               <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-2 2xl:grid-cols-3 gap-6">
                 {(selectedStaff ? detailedView : masterSummary).map((row, idx) => (
                   <div key={idx} onClick={() => !selectedStaff && row.status !== "ABSENT" && setSelectedStaff(row.name)} 
@@ -244,7 +243,7 @@ export default function AdminPage() {
             </div>
           )}
 
-          {/* PERSONNEL */}
+          {/* EMPLOYEES MANAGEMENT */}
           {activeTab === "enroll" && (
             <div className="space-y-12 animate-in fade-in duration-500">
               <div className="max-w-2xl mx-auto bg-white p-10 rounded-[3rem] border border-slate-200 shadow-sm">
@@ -254,16 +253,16 @@ export default function AdminPage() {
               <div className="space-y-8">
                 <div className="flex items-center justify-between border-b border-slate-200 pb-6">
                   <h3 className="text-3xl font-black uppercase tracking-tighter text-slate-900 flex items-center gap-4">
-                    <Users size={32} /> Personnel_List
+                    <Users size={32} /> Employee_List
                   </h3>
-                  <span className="bg-black text-white text-xs font-black px-6 py-2 rounded-full">{staffList.length} REGISTERED</span>
+                  <span className="bg-black text-white text-xs font-black px-6 py-2 rounded-full">{staffList.length} TOTAL</span>
                 </div>
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
                   {staffList.map((staff) => (
                     <div key={staff.id} className="bg-white p-6 rounded-[2rem] border border-slate-200 flex items-center justify-between hover:border-black transition-all group">
                       <div>
                         <p className="text-sm font-black uppercase tracking-tighter text-slate-900">{staff.name}</p>
-                        <p className="text-[9px] text-slate-400 font-bold uppercase mt-1">{staff.role || 'Innovator'}</p>
+                        <p className="text-[9px] text-slate-400 font-bold uppercase mt-1">{staff.role || 'Personnel'}</p>
                       </div>
                       <button onClick={() => handleDeleteStaff(staff.id)} className="p-3 text-slate-300 hover:text-red-600 hover:bg-red-50 rounded-2xl transition-all">
                         <Trash2 size={20} />

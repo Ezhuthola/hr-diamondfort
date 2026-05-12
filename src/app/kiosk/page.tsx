@@ -16,6 +16,7 @@ export default function KioskPage() {
   const [faceMatcher, setFaceMatcher] = useState<faceapi.FaceMatcher | null>(null);
   const [isLogging, setIsLogging] = useState(false);
 
+  // Clock Sync
   useEffect(() => {
     const timer = setInterval(() => {
       const now = new Date();
@@ -24,6 +25,7 @@ export default function KioskPage() {
     return () => clearInterval(timer);
   }, []);
 
+  // AI & Data Initialization
   useEffect(() => {
     async function setupKiosk() {
       try {
@@ -62,12 +64,11 @@ export default function KioskPage() {
   const recordAttendance = async (name: string) => {
     if (isLogging) return;
     setIsLogging(true);
-    setStatus("VERIFYING_SESSION...");
+    setStatus("VERIFYING_LAST_LOG...");
 
     try {
       const today = new Date().toISOString().split('T')[0];
       
-      // 1. Check for the most recent log for this user today
       const q = query(
         collection(db, "attendance"),
         where("name", "==", name),
@@ -78,36 +79,35 @@ export default function KioskPage() {
       
       const lastLogSnap = await getDocs(q);
       let nextType = "IN";
-      let displayMsg = "Attendance Recorded: IN";
+      let displayMsg = "Status: CHECKED_IN";
 
       if (!lastLogSnap.empty) {
         const lastLog = lastLogSnap.docs[0].data();
-        const lastTime = lastLog.timestamp.toDate().getTime();
+        const lastTime = lastLog.timestamp?.toDate().getTime() || Date.now();
         const now = Date.now();
         const diffMinutes = (now - lastTime) / 1000 / 60;
 
-        // 2. Enforce 5-minute buffer
+        // 5-Minute Buffer Check
         if (diffMinutes < 5) {
           setStatus("BUFFER_ACTIVE: WAIT 5 MIN");
           setTimeout(() => {
             setIdentifiedUser(null);
             setIsLogging(false);
             setStatus("SCANNING_ACTIVE");
-          }, 3000);
+          }, 4000);
           return;
         }
 
-        // 3. Toggle IN/OUT and Calculate Work Hours
+        // Toggle to OUT and Calculate Hours
         if (lastLog.type === "IN") {
           nextType = "OUT";
           const hours = Math.floor(diffMinutes / 60);
           const mins = Math.floor(diffMinutes % 60);
-          const workDuration = hours > 0 ? `${hours}h ${mins}m` : `${mins} mins`;
-          displayMsg = `Checked OUT. Worked: ${workDuration}`;
+          const durationStr = hours > 0 ? `${hours}h ${mins}m` : `${mins}m`;
+          displayMsg = `CHECKED_OUT | Worked: ${durationStr}`;
         }
       }
 
-      // 4. Save to Firestore
       await addDoc(collection(db, "attendance"), {
         name,
         type: nextType,
@@ -127,6 +127,7 @@ export default function KioskPage() {
       }, 5000);
 
     } catch (err: any) {
+      console.error(err);
       setStatus(`LOG_FAILURE: ${err.message}`);
       setIsLogging(false);
       setIdentifiedUser(null);
@@ -157,7 +158,7 @@ export default function KioskPage() {
       <header className="w-full flex justify-between items-center border-b border-slate-200 pb-4 max-w-4xl">
         <div className="flex flex-col text-left">
           <span className="text-[11px] font-black tracking-tighter text-slate-900">DIAMOND_FORT // NODE_01</span>
-          <span className={`text-[9px] font-bold uppercase tracking-tighter ${status.includes('ERROR') || status.includes('WAIT') ? 'text-red-500' : 'text-emerald-600'}`}>
+          <span className={`text-[9px] font-bold uppercase tracking-tighter ${status.includes('ERROR') || status.includes('FAILURE') || status.includes('WAIT') ? 'text-red-500' : 'text-emerald-600'}`}>
             ● {status}
           </span>
         </div>
@@ -178,23 +179,15 @@ export default function KioskPage() {
                 <span className="text-3xl font-bold">{status.includes('WAIT') ? '!' : '✓'}</span>
               </div>
               <h2 className="text-2xl font-black uppercase tracking-tighter mb-2">{identifiedUser}</h2>
-              <p className="text-[11px] font-bold tracking-[0.2em] opacity-90 uppercase">
+              <p className="text-[12px] font-bold tracking-[0.1em] uppercase leading-relaxed">
                 {sessionInfo || status}
               </p>
             </div>
           )}
           
           {!identifiedUser && isCameraReady && (
-            <div className="absolute inset-0 pointer-events-none p-10 flex flex-col justify-between z-10">
-                <div className="flex justify-between">
-                  <div className="w-12 h-12 border-t-2 border-l-2 border-emerald-400/50"></div>
-                  <div className="w-12 h-12 border-t-2 border-r-2 border-emerald-400/50"></div>
-                </div>
+            <div className="absolute inset-0 pointer-events-none p-10 z-10">
                 <div className="absolute top-0 left-0 w-full h-[2px] bg-emerald-400/30 shadow-[0_0_20px_rgba(52,211,153,0.5)] animate-scan"></div>
-                <div className="flex justify-between">
-                  <div className="w-12 h-12 border-b-2 border-l-2 border-emerald-400/50"></div>
-                  <div className="w-12 h-12 border-b-2 border-r-2 border-emerald-400/50"></div>
-                </div>
             </div>
           )}
         </div>
@@ -203,9 +196,9 @@ export default function KioskPage() {
       <footer className="w-full max-w-md text-center flex flex-col items-center gap-6">
         <div className="space-y-1">
           <div className="text-slate-900 text-[11px] font-black tracking-[0.3em] uppercase">
-            [ BIOMETRIC_SESSION_ACTIVE ]
+            [ BIOMETRIC_SHIFT_LOGIC ]
           </div>
-          <p className="text-[9px] text-slate-400 uppercase tracking-widest">Shift_Logic: IN_OUT_BUFFER_5M</p>
+          <p className="text-[9px] text-slate-400 uppercase tracking-widest">Auto IN/OUT // 5M Safety Buffer</p>
         </div>
         <Link href="/admin" className="text-[10px] text-slate-400 hover:text-slate-900 uppercase tracking-widest">[ ADMIN ]</Link>
       </footer>

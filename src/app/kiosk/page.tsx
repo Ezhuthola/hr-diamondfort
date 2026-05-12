@@ -16,7 +16,6 @@ export default function KioskPage() {
   const [faceMatcher, setFaceMatcher] = useState<faceapi.FaceMatcher | null>(null);
   const [isLogging, setIsLogging] = useState(false);
 
-  // Clock Sync
   useEffect(() => {
     const timer = setInterval(() => {
       const now = new Date();
@@ -25,7 +24,6 @@ export default function KioskPage() {
     return () => clearInterval(timer);
   }, []);
 
-  // AI & Data Initialization
   useEffect(() => {
     async function setupKiosk() {
       try {
@@ -45,7 +43,8 @@ export default function KioskPage() {
         });
         
         if (labeledDescriptors.length > 0) {
-          setFaceMatcher(new faceapi.FaceMatcher(labeledDescriptors, 0.55));
+          // THRESHOLD SET TO 0.40 FOR HIGH ACCURACY (Lower is stricter)
+          setFaceMatcher(new faceapi.FaceMatcher(labeledDescriptors, 0.40));
         }
 
         const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "user" } });
@@ -64,20 +63,13 @@ export default function KioskPage() {
   const recordAttendance = async (name: string) => {
     if (isLogging) return;
     setIsLogging(true);
-    setStatus("VERIFYING_LAST_LOG...");
+    setStatus("VERIFYING_SESSION...");
 
     try {
       const today = new Date().toISOString().split('T')[0];
-      
-      const q = query(
-        collection(db, "attendance"),
-        where("name", "==", name),
-        where("date", "==", today),
-        orderBy("timestamp", "desc"),
-        limit(1)
-      );
-      
+      const q = query(collection(db, "attendance"), where("name", "==", name), where("date", "==", today), orderBy("timestamp", "desc"), limit(1));
       const lastLogSnap = await getDocs(q);
+      
       let nextType = "IN";
       let displayMsg = "Status: CHECKED_IN";
 
@@ -87,47 +79,26 @@ export default function KioskPage() {
         const now = Date.now();
         const diffMinutes = (now - lastTime) / 1000 / 60;
 
-        // 5-Minute Buffer Check
         if (diffMinutes < 5) {
           setStatus("BUFFER_ACTIVE: WAIT 5 MIN");
-          setTimeout(() => {
-            setIdentifiedUser(null);
-            setIsLogging(false);
-            setStatus("SCANNING_ACTIVE");
-          }, 4000);
+          setTimeout(() => { setIdentifiedUser(null); setIsLogging(false); setStatus("SCANNING_ACTIVE"); }, 4000);
           return;
         }
 
-        // Toggle to OUT and Calculate Hours
         if (lastLog.type === "IN") {
           nextType = "OUT";
           const hours = Math.floor(diffMinutes / 60);
           const mins = Math.floor(diffMinutes % 60);
-          const durationStr = hours > 0 ? `${hours}h ${mins}m` : `${mins}m`;
-          displayMsg = `CHECKED_OUT | Worked: ${durationStr}`;
+          displayMsg = `CHECKED_OUT | Worked: ${hours > 0 ? hours + 'h ' : ''}${mins}m`;
         }
       }
 
-      await addDoc(collection(db, "attendance"), {
-        name,
-        type: nextType,
-        timestamp: serverTimestamp(),
-        date: today,
-        node: "BIOMETRIC_NODE_01"
-      });
-
+      await addDoc(collection(db, "attendance"), { name, type: nextType, timestamp: serverTimestamp(), date: today, node: "BIOMETRIC_NODE_01" });
       setSessionInfo(displayMsg);
       setStatus("ENTRY_SUCCESS");
-
-      setTimeout(() => {
-        setIdentifiedUser(null);
-        setSessionInfo(null);
-        setIsLogging(false);
-        setStatus("SCANNING_ACTIVE");
-      }, 5000);
+      setTimeout(() => { setIdentifiedUser(null); setSessionInfo(null); setIsLogging(false); setStatus("SCANNING_ACTIVE"); }, 5000);
 
     } catch (err: any) {
-      console.error(err);
       setStatus(`LOG_FAILURE: ${err.message}`);
       setIsLogging(false);
       setIdentifiedUser(null);
@@ -154,59 +125,34 @@ export default function KioskPage() {
   }, [isCameraReady, faceMatcher, identifiedUser, isLogging]);
 
   return (
-    <div className="min-h-screen bg-[#F8F9FA] text-slate-800 font-mono flex flex-col items-center justify-between p-6 overflow-hidden">
+    <div className="min-h-screen bg-[#F8F9FA] text-slate-800 font-mono flex flex-col items-center justify-between p-6">
       <header className="w-full flex justify-between items-center border-b border-slate-200 pb-4 max-w-4xl">
-        <div className="flex flex-col text-left">
-          <span className="text-[11px] font-black tracking-tighter text-slate-900">DIAMOND_FORT // NODE_01</span>
-          <span className={`text-[9px] font-bold uppercase tracking-tighter ${status.includes('ERROR') || status.includes('FAILURE') || status.includes('WAIT') ? 'text-red-500' : 'text-emerald-600'}`}>
-            ● {status}
-          </span>
+        <div className="text-left">
+          <span className="text-[11px] font-black tracking-tighter text-slate-900 block">DIAMOND_FORT // NODE_01</span>
+          <span className={`text-[9px] font-bold uppercase ${status.includes('WAIT') ? 'text-amber-500' : 'text-emerald-600'}`}>● {status}</span>
         </div>
         <div className="text-right">
           <div className="text-[13px] font-bold text-slate-900 tracking-widest">{currentTime}</div>
-          <div className="text-[9px] text-slate-400 uppercase">Local_Time</div>
         </div>
       </header>
 
       <main className="relative w-full max-w-sm aspect-[3/4] my-4">
         <div className="absolute -inset-2 bg-gradient-to-b from-slate-200 to-white rounded-[2.5rem] shadow-xl"></div>
-        <div className="relative w-full h-full border-4 border-white rounded-[2rem] overflow-hidden bg-slate-900 flex items-center justify-center shadow-inner">
-          <video ref={videoRef} autoPlay muted playsInline className={`w-full h-full object-cover grayscale scale-x-[-1] transition-opacity duration-500 ${isCameraReady ? 'opacity-80' : 'opacity-0'}`} />
-
+        <div className="relative w-full h-full border-4 border-white rounded-[2rem] overflow-hidden bg-slate-900 flex items-center justify-center">
+          <video ref={videoRef} autoPlay muted playsInline className="w-full h-full object-cover grayscale scale-x-[-1] opacity-80" />
           {identifiedUser && (
-            <div className={`absolute inset-0 z-30 ${status.includes('WAIT') ? 'bg-amber-500/95' : 'bg-emerald-600/95'} flex flex-col items-center justify-center text-white p-6 animate-in fade-in zoom-in duration-300 text-center`}>
-              <div className="w-16 h-16 border-4 border-white rounded-full flex items-center justify-center mb-6">
-                <span className="text-3xl font-bold">{status.includes('WAIT') ? '!' : '✓'}</span>
-              </div>
-              <h2 className="text-2xl font-black uppercase tracking-tighter mb-2">{identifiedUser}</h2>
-              <p className="text-[12px] font-bold tracking-[0.1em] uppercase leading-relaxed">
-                {sessionInfo || status}
-              </p>
-            </div>
-          )}
-          
-          {!identifiedUser && isCameraReady && (
-            <div className="absolute inset-0 pointer-events-none p-10 z-10">
-                <div className="absolute top-0 left-0 w-full h-[2px] bg-emerald-400/30 shadow-[0_0_20px_rgba(52,211,153,0.5)] animate-scan"></div>
+            <div className={`absolute inset-0 z-30 ${status.includes('WAIT') ? 'bg-amber-500/95' : 'bg-emerald-600/95'} flex flex-col items-center justify-center text-white p-6 text-center animate-in zoom-in duration-300`}>
+              <h2 className="text-2xl font-black uppercase mb-2">{identifiedUser}</h2>
+              <p className="text-[11px] font-bold tracking-widest uppercase">{sessionInfo || status}</p>
             </div>
           )}
         </div>
       </main>
 
-      <footer className="w-full max-w-md text-center flex flex-col items-center gap-6">
-        <div className="space-y-1">
-          <div className="text-slate-900 text-[11px] font-black tracking-[0.3em] uppercase">
-            [ BIOMETRIC_SHIFT_LOGIC ]
-          </div>
-          <p className="text-[9px] text-slate-400 uppercase tracking-widest">Auto IN/OUT // 5M Safety Buffer</p>
-        </div>
-        <Link href="/admin" className="text-[10px] text-slate-400 hover:text-slate-900 uppercase tracking-widest">[ ADMIN ]</Link>
+      <footer className="text-center space-y-4">
+        <p className="text-[9px] text-slate-400 uppercase tracking-widest">Hardened Security Threshold: 0.40</p>
+        <Link href="/admin" className="text-[10px] text-slate-400 hover:text-slate-900 uppercase tracking-widest border-b border-slate-200">[ ADMIN_PANEL ]</Link>
       </footer>
-
-      <style jsx>{`
-        @keyframes scan { 0% { top: 10%; opacity: 0; } 20% { opacity: 1; } 80% { opacity: 1; } 100% { top: 90%; opacity: 0; } }
-        .animate-scan { animation: scan 3s linear infinite; }
-      `}</style>
     </div>
   );
 }

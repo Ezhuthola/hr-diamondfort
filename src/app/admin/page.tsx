@@ -159,7 +159,7 @@ export default function AdminPage() {
           {activeTab === "dashboard" && (
             <div className="animate-in fade-in slide-in-from-bottom-2 duration-500 space-y-10">
               <header>
-                <h2 className="text-4xl lg:text-6xl font-black uppercase tracking-tighter text-slate-900">Operational_Pulse</h2>
+                <h2 className="text-4xl lg:text-6xl font-black uppercase tracking-tighter text-slate-900">Operational Pulse</h2>
                 <div className="h-1.5 w-24 bg-black mt-4"></div>
               </header>
 

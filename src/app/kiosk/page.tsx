@@ -66,8 +66,9 @@ export default function KioskPage() {
           setFaceMatcher(new faceapi.FaceMatcher(labeledDescriptors, 0.40));
         }
 
+        // --- CAMERA UPDATE: SET TO REAR (environment) ---
         const stream = await navigator.mediaDevices.getUserMedia({ 
-          video: { facingMode: "user" } 
+          video: { facingMode: "environment" } 
         });
 
         if (videoRef.current) {
@@ -82,9 +83,9 @@ export default function KioskPage() {
     setupKiosk();
   }, []);
 
-  // 3. Hardened Attendance Logic with 5-Minute Buffer
+  // 3. Hardened Attendance Logic
   const recordAttendance = async (name: string) => {
-    if (isLogging) return; // Immediate lock to prevent multiple triggers
+    if (isLogging) return; 
     setIsLogging(true);
     setStatus("VERIFYING_LAST_LOG...");
 
@@ -109,12 +110,10 @@ export default function KioskPage() {
         const lastTime = lastLog.timestamp?.toDate().getTime() || now;
         const diffMinutes = (now - lastTime) / 1000 / 60;
 
-        // --- THE 5 MINUTE BUFFER CHECK ---
         if (diffMinutes < 5) {
           const remaining = Math.ceil(5 - diffMinutes);
           setStatus(`COOLDOWN: WAIT ${remaining} MIN`);
           
-          // Reset UI after warning without adding to DB
           setTimeout(() => {
             setIdentifiedUser(null);
             setIsLogging(false);
@@ -123,14 +122,12 @@ export default function KioskPage() {
           return;
         }
 
-        // Toggle Status
         if (lastLog.type === "IN") {
           nextType = "OUT";
           displayMsg = "Status: CHECKED_OUT";
         }
       }
 
-      // Add record to DB
       await addDoc(collection(db, "attendance"), { 
         name, 
         type: nextType, 
@@ -142,7 +139,6 @@ export default function KioskPage() {
       setSessionInfo(displayMsg);
       setStatus("LOG_SUCCESSFUL");
 
-      // Success Display Duration (5 seconds before next scan allowed)
       setTimeout(() => {
         setIdentifiedUser(null);
         setSessionInfo(null);
@@ -176,7 +172,7 @@ export default function KioskPage() {
             }
           }
         }
-      }, 700); // 700ms frequency for balance of speed and stability
+      }, 700); 
     }
     return () => clearInterval(interval);
   }, [isCameraReady, faceMatcher, identifiedUser, isLogging]);
@@ -200,12 +196,13 @@ export default function KioskPage() {
       <main className="relative w-full max-w-sm aspect-[3/4] my-4">
         <div className="absolute -inset-2 bg-gradient-to-b from-slate-200 to-white rounded-[2.5rem] shadow-xl"></div>
         <div className="relative w-full h-full border-4 border-white rounded-[2rem] overflow-hidden bg-slate-900 flex items-center justify-center">
+          {/* --- CSS UPDATE: REMOVED scale-x-[-1] FOR REAR CAMERA --- */}
           <video 
             ref={videoRef} 
             autoPlay 
             muted 
             playsInline 
-            className="w-full h-full object-cover grayscale scale-x-[-1] opacity-80" 
+            className="w-full h-full object-cover grayscale opacity-80" 
           />
           
           {identifiedUser && (

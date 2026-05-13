@@ -25,7 +25,6 @@ export default function EnrollForm() {
     "Restaurant", "Bar", "Security", "Administration", "Management"
   ];
 
-  // 1. Initialize AI Models and REAR Camera
   useEffect(() => {
     const initialize = async () => {
       try {
@@ -40,9 +39,12 @@ export default function EnrollForm() {
         setModelsLoaded(true);
         setStatus("AI_ENGINE_ONLINE");
         
-        // SWITCHED TO REAR CAMERA (environment)
+        // REAR CAMERA with PORTRAIT focus
         const stream = await navigator.mediaDevices.getUserMedia({ 
-          video: { facingMode: "environment" } 
+          video: { 
+            facingMode: "environment",
+            aspectRatio: 0.75 // Encourages portrait 3:4 ratio
+          } 
         });
         if (videoRef.current) videoRef.current.srcObject = stream;
         
@@ -83,10 +85,8 @@ export default function EnrollForm() {
         return;
       }
 
-      // Convert Float32Array to standard Number Array
       const descriptorArray = Array.from(detection.descriptor);
 
-      // Record full profile to Firestore
       await addDoc(collection(db, "staff"), {
         ...formData,
         faceDescriptor: descriptorArray,
@@ -96,7 +96,6 @@ export default function EnrollForm() {
       });
 
       setStatus(`SUCCESS: ${formData.name} ENROLLED`);
-      // Reset form
       setFormData({
         name: "",
         gender: "Male",
@@ -114,114 +113,118 @@ export default function EnrollForm() {
   };
 
   return (
-    <div className="bg-white p-8 rounded-[2.5rem] border border-slate-200 shadow-sm max-w-xl animate-in fade-in duration-700">
-      <div className="space-y-4">
+    <div className="w-full max-w-md mx-auto px-4 pb-10 font-mono">
+      <div className="bg-white p-5 md:p-8 rounded-[2rem] border border-slate-100 shadow-xl space-y-5">
         
-        {/* Full Name & Gender */}
-        <div className="grid grid-cols-2 gap-4">
+        {/* Responsive Grid for Inputs */}
+        <div className="grid grid-cols-1 gap-4">
+          
           <div className="space-y-1">
-            <label className="text-[8px] font-black text-slate-400 uppercase tracking-widest px-2">Name</label>
+            <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">Full Name</label>
             <input 
               type="text" 
               value={formData.name}
               onChange={(e) => setFormData({...formData, name: e.target.value})}
-              className="w-full bg-slate-50 border border-slate-100 p-3 rounded-xl text-xs font-bold"
-              placeholder="ENTER NAME"
+              className="w-full bg-slate-50 border border-slate-200 p-4 rounded-2xl text-sm font-bold focus:ring-2 focus:ring-slate-900 outline-none transition-all"
+              placeholder="NAME"
             />
           </div>
-          <div className="space-y-1">
-            <label className="text-[8px] font-black text-slate-400 uppercase tracking-widest px-2">Gender</label>
-            <select 
-              value={formData.gender}
-              onChange={(e) => setFormData({...formData, gender: e.target.value})}
-              className="w-full bg-slate-50 border border-slate-100 p-3 rounded-xl text-xs font-bold"
-            >
-              <option>Male</option>
-              <option>Female</option>
-              <option>Other</option>
-            </select>
-          </div>
-        </div>
 
-        {/* Contact & Designation */}
-        <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-2 gap-3">
+            <div className="space-y-1">
+              <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">Gender</label>
+              <select 
+                value={formData.gender}
+                onChange={(e) => setFormData({...formData, gender: e.target.value})}
+                className="w-full bg-slate-50 border border-slate-200 p-4 rounded-2xl text-sm font-bold outline-none"
+              >
+                <option>Male</option>
+                <option>Female</option>
+                <option>Other</option>
+              </select>
+            </div>
+            <div className="space-y-1">
+              <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">Contact</label>
+              <input 
+                type="tel" 
+                value={formData.contact}
+                onChange={(e) => setFormData({...formData, contact: e.target.value})}
+                className="w-full bg-slate-50 border border-slate-200 p-4 rounded-2xl text-sm font-bold outline-none"
+                placeholder="PHONE"
+              />
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+             <div className="space-y-1">
+              <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">Department</label>
+              <select 
+                value={formData.department}
+                onChange={(e) => setFormData({...formData, department: e.target.value})}
+                className="w-full bg-slate-50 border border-slate-200 p-4 rounded-2xl text-sm font-bold outline-none"
+              >
+                {departments.map(dept => <option key={dept} value={dept}>{dept}</option>)}
+              </select>
+            </div>
+            <div className="space-y-1">
+              <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">Designation</label>
+              <input 
+                type="text" 
+                value={formData.designation}
+                onChange={(e) => setFormData({...formData, designation: e.target.value})}
+                className="w-full bg-slate-50 border border-slate-200 p-4 rounded-2xl text-sm font-bold outline-none"
+                placeholder="POSITION"
+              />
+            </div>
+          </div>
+
           <div className="space-y-1">
-            <label className="text-[8px] font-black text-slate-400 uppercase tracking-widest px-2">Contact Number</label>
-            <input 
-              type="text" 
-              value={formData.contact}
-              onChange={(e) => setFormData({...formData, contact: e.target.value})}
-              className="w-full bg-slate-50 border border-slate-100 p-3 rounded-xl text-xs font-bold"
-              placeholder="PHONE"
+            <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">Residential Address</label>
+            <textarea 
+              rows={2}
+              value={formData.address}
+              onChange={(e) => setFormData({...formData, address: e.target.value})}
+              className="w-full bg-slate-50 border border-slate-200 p-4 rounded-2xl text-sm font-bold resize-none outline-none"
+              placeholder="STREET, CITY, PIN"
             />
           </div>
-          <div className="space-y-1">
-            <label className="text-[8px] font-black text-slate-400 uppercase tracking-widest px-2">Designation</label>
-            <input 
-              type="text" 
-              value={formData.designation}
-              onChange={(e) => setFormData({...formData, designation: e.target.value})}
-              className="w-full bg-slate-50 border border-slate-100 p-3 rounded-xl text-xs font-bold"
-              placeholder="POSITION"
-            />
-          </div>
         </div>
 
-        {/* Department Dropdown */}
-        <div className="space-y-1">
-          <label className="text-[8px] font-black text-slate-400 uppercase tracking-widest px-2">Department</label>
-          <select 
-            value={formData.department}
-            onChange={(e) => setFormData({...formData, department: e.target.value})}
-            className="w-full bg-slate-50 border border-slate-100 p-3 rounded-xl text-xs font-bold"
-          >
-            {departments.map(dept => <option key={dept} value={dept}>{dept}</option>)}
-          </select>
-        </div>
-
-        {/* Address */}
-        <div className="space-y-1">
-          <label className="text-[8px] font-black text-slate-400 uppercase tracking-widest px-2">Contact Address</label>
-          <textarea 
-            rows={2}
-            value={formData.address}
-            onChange={(e) => setFormData({...formData, address: e.target.value})}
-            className="w-full bg-slate-50 border border-slate-100 p-3 rounded-xl text-xs font-bold resize-none"
-            placeholder="RESIDENTIAL ADDRESS"
-          />
-        </div>
-
-        {/* Training Camera Feed - UPDATED CSS for Rear Camera (No Mirroring) */}
-        <div className="relative aspect-video bg-slate-900 rounded-[2rem] overflow-hidden border-4 border-white shadow-2xl">
+        {/* PORTRAIT CAMERA AREA (3:4 Ratio) */}
+        <div className="relative w-full aspect-[3/4] bg-slate-900 rounded-[2rem] overflow-hidden border-4 border-white shadow-lg">
           <video 
             ref={videoRef} 
             autoPlay 
             muted 
             playsInline 
             className={`w-full h-full object-cover grayscale brightness-110 contrast-125 transition-opacity duration-700 ${modelsLoaded ? 'opacity-90' : 'opacity-0'}`} 
-            // Removed scale-x-[-1] because it is the back camera
           />
-          
-          <div className="absolute inset-0 border-[30px] border-black/5 pointer-events-none"></div>
+          <div className="absolute inset-0 border-[20px] border-black/5 pointer-events-none"></div>
+          {!modelsLoaded && (
+            <div className="absolute inset-0 flex items-center justify-center bg-slate-900">
+              <div className="w-6 h-6 border-2 border-white/20 border-t-white rounded-full animate-spin"></div>
+            </div>
+          )}
         </div>
 
-        {/* Execution Button */}
-        <div className="pt-2">
+        {/* Responsive Button */}
+        <div className="space-y-4">
           <button 
             onClick={handleEnroll}
             disabled={isProcessing || !modelsLoaded || !formData.name}
-            className="w-full bg-slate-900 text-white py-5 rounded-2xl text-[10px] font-bold uppercase tracking-[0.4em] disabled:opacity-20 hover:bg-black transition-all shadow-xl active:scale-95"
+            className="w-full bg-slate-950 text-white py-5 rounded-[1.5rem] text-[11px] font-black uppercase tracking-[0.3em] disabled:opacity-20 hover:scale-[1.02] active:scale-[0.98] transition-all shadow-xl shadow-slate-200"
           >
-            {isProcessing ? "VECTORIZING_BIOMETRICS..." : "[ COMMENCE_ENROLLMENT ]"}
+            {isProcessing ? "VECTORIZING..." : "[ COMMENCE ENROLLMENT ]"}
           </button>
           
-          <div className="mt-4 flex items-center justify-center gap-2">
-             <span className={`w-1 h-1 rounded-full ${status.includes('ERROR') ? 'bg-red-500' : 'bg-emerald-500 animate-pulse'}`}></span>
-             <p className={`text-[9px] font-bold tracking-tighter uppercase ${status.includes('ERROR') ? 'text-red-500' : 'text-slate-400'}`}>
+          <div className="flex items-center justify-center gap-2">
+             <span className={`w-1.5 h-1.5 rounded-full ${status.includes('ERROR') ? 'bg-red-500' : 'bg-emerald-500 animate-pulse'}`}></span>
+             <p className={`text-[10px] font-bold tracking-tight uppercase ${status.includes('ERROR') ? 'text-red-500' : 'text-slate-500'}`}>
                 {status}
              </p>
           </div>
         </div>
+
       </div>
     </div>
   );
